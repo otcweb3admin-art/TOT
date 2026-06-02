@@ -26,3 +26,36 @@ model HealthCheck {
   note      String   @default("p0")
   createdAt DateTime @default(now())
 }
+
+// ===== P1 Auth + Role foundation =====
+// Roles are authoritative per docs/architecture/ROLE_MODEL.md (6 roles).
+// NOTE: SYSTEM_BLUEPRINT additionally mentions `outsource` (a 7th role) — this is a
+// known doc discrepancy (see project-audit-v1 R2). NOT added here to avoid inventing
+// roles; add later via a new migration if the team decides to adopt it.
+enum Role {
+  merchant
+  collector
+  operator
+  executor
+  admin
+  ai_worker
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+// Minimal identity/role profile, linked 1:1 to a Supabase auth user.
+// JIT-provisioned on first login (see lib/auth/dal.ts). NOT a business entity.
+// Default role `operator` is a P1 placeholder; proper role assignment + signup
+// restriction are later-phase work.
+model UserProfile {
+  id         String     @id @default(uuid())
+  authUserId String     @unique // = Supabase auth.users.id
+  email      String
+  role       Role       @default(operator)
+  status     UserStatus @default(active)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}

@@ -18,7 +18,7 @@
 
 ## 项目是什么
 **TOT / growth-delivery**：海外华人实体商家**线上增长交付系统**——AI + 人类协同的"增长运营组织"，按可追踪客流分成。不是软件/咨询/代运营公司。
-- 当前阶段：业务架构已成体系（Phase 0→2 共 17+ 份架构文档，见下）；**代码侧仅 create-next-app 脚手架，尚未写业务代码**。
+- 当前阶段：业务架构已成体系（Phase 0→2 共 20+ 份架构文档，见下）；**代码侧 P0 地基 + P1 Auth/角色地基已完成并上线**（`tot-dun.vercel.app`），尚未进入业务模块（TB/MGOS/MVS 等仍只有架构、无代码）。详见 PROJECT_STATE.md。
 
 ## 硬规则（必须始终遵守，违反即错）
 - **AI 提供依据，人决策**（Human Commercial Authority）：AI **不得**决定 合作/签约/拒绝/收费/资源投入/客户优先/扩张/进入新市场。AI 只能 评估/分析/风险识别/建议。
@@ -56,3 +56,6 @@ Next.js **16.2.6**（App Router，**非标准版**——写码前必读 `app/nod
 - 2026-06-01：从阶段0 进入**阶段1**（已授权写 MVP 业务代码）。
 - 2026-06-02：仓库上线；产出 Phase 0–2 业务架构全套；配置自动推送 hook + 内置 auto-memory。
 - 经验库 v1/v2 **两版并存**（用户决定，勿合并/删除）。
+- 2026-06-03：**P0 地基落地并上线**（Next16+Prisma+Supabase+Vercel）；**关键坑：Vercel Root Directory 必须 = `app`**（monorepo），否则全路由 404。
+- 2026-06-03：**P1 Auth+角色地基完成**（`@supabase/ssr` + `UserProfile` + `app/proxy.ts` 守卫）；**Next 16 把 middleware 改名为 `proxy`（app/proxy.ts，Node 运行时）`cookies()` 异步**——写码必读内置文档。
+- 角色枚举以 **ROLE_MODEL.md 的 6 个**为准（merchant/collector/operator/executor/admin/ai_worker）；SYSTEM_BLUEPRINT 的 `outsource`（第7个）属已知差异、**待用户定夺**，勿擅自增删。
