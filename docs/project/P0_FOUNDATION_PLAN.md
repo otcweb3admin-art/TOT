@@ -244,3 +244,9 @@ model Transition {
 - Vercel 连仓库 + 环境变量 + 线上部署验证。
 
 **未做（刻意，按 P0 极简）**：业务表（Merchant/Node/…）、Auth、Workflow、AI Agent、MVS/MGOS 实现——均留后续 Phase。
+
+### 11.1 连库 + 线上部署验证（2026-06-03 完成）
+- ✅ **连库**：填入 Supabase 连接串（本机 `app/.env`，gitignored）→ `npx prisma migrate dev` 成功，迁移 `20260602201343_init` 建 `HealthCheck` 表；端到端 `@prisma/client` 走池化串 `SELECT 1` = `DB_OK`。
+- ✅ **Vercel 线上部署验证（TASK-024）**：生产域名 `https://tot-dun.vercel.app`，`/health` 返回 `{"service":"tot","status":"ok","phase":"p0-foundation","db":{"status":"connected"}}`（HTTP 200）。
+- ⚠️ **踩坑记录**：Vercel 项目 **Root Directory 必须设为 `app`**（本仓库是 monorepo，Next 应用在 `app/` 子目录）。未设时构建仅 ~2 秒、产出空壳、所有路由 404。此为该阶段唯一卡点，与代码无关。
+- **P0 至此全部完成**：项目已是"可运行 / 可构建 / 已连库 / 已上线"的系统地基。
