@@ -7,11 +7,11 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 22 份架构文档，"增长运行机制"六层闭环）。**P0 地基已落地（TASK-022）**：项目从"文档仓库"变为**可运行 / 可构建 / 可部署**的系统地基（Next 16 + Prisma + 最小 schema + `/health` 健康检查）。**待用户提供 Supabase 连接串后即可跑 migration 真正连库。**
+业务架构已成体系（约 22 份架构文档，"增长运行机制"六层闭环）。**P0 地基已落地并连通数据库（TASK-022）**：项目从"文档仓库"变为**可运行 / 可构建 / 可部署 / 已连库**的系统地基（Next 16 + Prisma + 最小 schema + `/health`）。**已连 Supabase 并跑通首个 migration（`HealthCheck` 表已建，端到端 `SELECT 1` 验证 OK）。剩下：连 Vercel 部署上线。**
 
 ## 当前阶段
 - **文档/架构**：业务架构体系已相当完整（Phase 0–2 + 增长运行机制六层闭环）。
-- **代码**：**P0 地基已落地**——`npm install/dev/build` 通过、`/health` 可访问、Prisma 配好；**migration 待 DB 连接串**。下一步 P1（认证 + 角色）。
+- **代码**：**P0 地基已落地 + 已连库**——`npm install/dev/build` 通过、Prisma 配好、**已连 Supabase 并应用首个 migration（`HealthCheck` 表）**、端到端连库验证 OK（`@prisma/client` 走池化串 `SELECT 1` 成功）。下一步：**Vercel 部署** →（之后 P1 认证+角色）。
 
 ## 已完成（指针见 CLAUDE.md「文档地图」）
 - 8 封板模板 TB-001~008 + 治理文档 + 架构地基。
@@ -28,8 +28,9 @@
 - **之后 P1**：Supabase Auth + 6 角色 + 路由守卫（见 [MVP_BUILD_PLAN.md](./MVP_BUILD_PLAN.md)）。
 
 ## 待决 / 待用户提供
-- **P0 连库所需（现在就缺）**：Supabase **`DATABASE_URL`**（池化 6543，带 `?pgbouncer=true&connection_limit=1`）+ **`DIRECT_URL`**（直连 5432）。填入 `app/.env.local` 后我即可跑 migration。**未提供前不编造、不硬编码。**
-- Vercel：项目是否已连仓库 / 是否已设 Root=`app` / 环境变量是否配齐。
+- ✅ **P0 连库已完成**：Supabase 连接串已在本机 `app/.env`（gitignored），迁移已应用，端到端验证通过。Supabase 项目 ref `exufxqskcsvgtohbewcu`、区域 `ap-northeast-2`。
+- **P0 收尾（待用户）— Vercel 部署**：项目是否已连仓库 / 设 Root=`app` / 在 **Vercel 后台**配 `DATABASE_URL`+`DIRECT_URL`（同 `app/.env` 的值，**不要提交到仓库**）。配好后推送即自动部署，线上 `/health` 应返回 `db:connected`。
+  - 注：本地 `next start` 不自动读 `.env`（Next 行为），但 Vercel 用平台环境变量，不受影响；本地开发用 `next dev` 会读 `.env`。
 - 之前聊天中暴露过的 GitHub PAT：建议尽快 revoke（若未做）。
 
 ## 接续要点（换窗口/换机/换 AI）
