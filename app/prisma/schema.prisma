@@ -1,0 +1,28 @@
+// TOT — Prisma schema (P0 foundation only)
+//
+// P0 scope: validate that the app can connect to the database and run migrations.
+// This is NOT the business data model. Business models (Profile / Merchant / Node /
+// Approval / Transition / RealMetric / AttributionRecord / Experience ...) are defined
+// in later phases per docs/project/P0_FOUNDATION_PLAN.md and the architecture docs.
+//
+// Supabase connection (via Prisma):
+//   DATABASE_URL = pooled connection (Transaction pooler, port 6543) — app runtime
+//   DIRECT_URL   = direct connection (port 5432)                     — migrations
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Minimal foundation model — used only to validate connectivity & migrations.
+// Safe to drop/replace when real business models land. Not a business entity.
+model HealthCheck {
+  id        String   @id @default(uuid())
+  note      String   @default("p0")
+  createdAt DateTime @default(now())
+}

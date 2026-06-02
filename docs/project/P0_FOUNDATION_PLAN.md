@@ -223,3 +223,24 @@ model Transition {
 2. **环境变量与密钥提供方式**（第 8 节，推荐你自己填真值）选 (a) 还是 (b)？
 3. Vercel 项目当前状态（是否已连仓库、是否已设 Root=app）？
 4. 确认后即可让我开始执行 P0 第 7 节步骤。
+
+---
+
+## 11. 执行状态（TASK-022 落地记录，只补充状态，不改上方战略）
+
+> 2026-06-03 执行 P0 第一步。**实际范围比第 4 节更克制**：按 TASK-022 指令"P0 不建完整业务模型"，本轮**未建第 4 节的 5 张业务表**，只建 1 个最小 `HealthCheck` 表用于验证连库与迁移。第 4 节的 5 表 schema 仍是后续 Phase 的设计基线，留待 P1+ 落地。
+
+**已完成（已上线）**：
+- 依赖：`prisma`、`@prisma/client`（**钉 ^6.19.3**；Prisma 7 客户端生成模型变动大、无内置文档可对照，P0 以 build 可靠为先，后续可升级）。
+- `app/prisma/schema.prisma`：datasource（`DATABASE_URL` + `directUrl=DIRECT_URL`）+ 最小 `HealthCheck` 模型。
+- `app/lib/db.ts`：Prisma 单例（serverless 安全、懒连接）。
+- `app/app/health/route.ts`：`GET /health` 健康检查（`force-dynamic`），返回 `{service,status,phase,db,time}`；DB 未配时 `db:unconfigured` 且 200。
+- `app/.env.example`：`DATABASE_URL`/`DIRECT_URL` 占位 + 后续 Phase 预留项（不入真值）；`app/.gitignore` 加 `!.env.example`。
+- `package.json`：加 `postinstall: prisma generate`（Vercel 安装即生成 client）。
+- 验证：`prisma generate` ✓、`npm run build` ✓（`/health` 为 Dynamic）、`npm run lint` ✓、本地 `/health` 实测 200。
+
+**未完成（待用户提供连接信息）**：
+- `npx prisma migrate dev`（建 `HealthCheck` 表，验证连库）——**缺 `DATABASE_URL`/`DIRECT_URL`，未编造、未硬编码**。
+- Vercel 连仓库 + 环境变量 + 线上部署验证。
+
+**未做（刻意，按 P0 极简）**：业务表（Merchant/Node/…）、Auth、Workflow、AI Agent、MVS/MGOS 实现——均留后续 Phase。
