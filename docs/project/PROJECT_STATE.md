@@ -7,7 +7,7 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 19 份架构文档全部上线，"增长运行机制"层进行中：诊断→策略→计划）；**代码侧仍为 create-next-app 脚手架，未开始写业务代码**。下一步可选：继续产出架构 / 进入 P0 地基落地。
+业务架构已成体系（约 20 份架构文档全部上线，"增长运行机制"层：诊断→策略→计划→执行，下接 MVS 验证成闭环）；**代码侧仍为 create-next-app 脚手架，未开始写业务代码**。下一步可选：继续产出架构 / 进入 P0 地基落地。
 
 ## 当前阶段
 - **文档/架构**：Phase 2 进行中（已出 commercial-operating、merchant-success 等）。
@@ -18,7 +18,7 @@
 - **Phase 0 业务地基**（6）：audit / knowledge / methodology / asset / evidence / intelligence。
 - **集成·验证**：MGOS / MVS / AIGO / 经验库 v1+v2 / 经验应用。
 - **交付·运营**：growth-delivery / pilot(R2) / commercial-operating / merchant-success。
-- **增长运行机制**：growth-diagnostic（诊断·门1）→ growth-strategy（策略·门2/决策层）→ growth-planning（计划·门3/行动系统）。
+- **增长运行机制**：诊断(门1)→策略(门2)→计划(门3)→执行(门4)：growth-diagnostic / -strategy / -planning / -execution。下一环接 MVS 验证（已有）成闭环。
 - **工程方案**：MVP_BUILD_PLAN、P0_FOUNDATION_PLAN（地基与部署，**未执行**）。
 - **基础设施**：仓库上线；自动推送 hook（docs/ 改动每轮自动 commit+tag+push）；内置记忆（CLAUDE.md + auto-memory + auto-dream）；CLAUDE.md 接续入口 + 本交接棒。
 
