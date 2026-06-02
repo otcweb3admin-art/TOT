@@ -16,8 +16,9 @@ next-env.d.ts
 # ===== Vercel =====
 .vercel
 
-# ===== Claude Code local settings =====
+# ===== Claude Code local settings & personal automation =====
 .claude/settings.local.json
+.claude/hooks/
 
 # ===== OS / editor =====
 .DS_Store
