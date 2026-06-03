@@ -94,6 +94,10 @@ model UserProfile {
   // P2-009: back-relations for MerchantLeadConversion audit FKs.
   leadConversionsCreated MerchantLeadConversion[] @relation("LeadConversionCreatedBy")
   leadConversionsUpdated MerchantLeadConversion[] @relation("LeadConversionUpdatedBy")
+
+  // P2-010: back-relations for MerchantDataReview audit FKs.
+  dataReviewsCreated MerchantDataReview[] @relation("DataReviewCreatedBy")
+  dataReviewsUpdated MerchantDataReview[] @relation("DataReviewUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -154,6 +158,9 @@ model Merchant {
 
   // P2-009: optional 1-1 TB-006 lead conversion.
   leadConversion MerchantLeadConversion?
+
+  // P2-010: optional 1-1 TB-007 data review.
+  dataReview MerchantDataReview?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -486,6 +493,58 @@ model MerchantLeadConversion {
   createdBy          UserProfile @relation("LeadConversionCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("LeadConversionUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-010 TB-007 Data Review Foundation =====
+// MINIMAL human-written TB-007 data-review (summary-level reflection). This is NOT the
+// full TB-007 output set, NOT a full MVS, NOT automatic attribution, NOT ROI computation,
+// NOT reports/charts, NOT automatic data scraping, NOT platform APIs, NOT Experience Base
+// / auto experience capture, NOT AI review generation, NOT a review/approval flow.
+// 1-1 with Merchant; all summary fields optional. Can REFERENCE the merchant's current
+// baseline / TB-004 / TB-005 / TB-006 as upstream inputs via soft id pointers
+// (sourceBaselineMetricId / sourceContentOperationId / sourceLivePlanningId /
+// sourceLeadConversionId — NOT enforced FKs). RealMetric / AttributionRecord / ROI / KPI /
+// ReviewFinding / ExperienceCandidate / Report tables are later MVS / Metric / Experience
+// phases — NOT built here.
+enum DataReviewStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantDataReview {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status                        DataReviewStatus @default(draft)
+  reviewPeriodLabel             String?
+  goalCompletionSummary         String?
+  contentEffectSummary          String?
+  liveEffectSummary             String?
+  leadConversionEffectSummary   String?
+  realBusinessDataSummary       String?
+  problemDiagnosisSummary       String?
+  optimizationSuggestionSummary String?
+  strategyJudgmentSummary       String?
+  attributionObservationSummary String?
+  reviewRiskSummary             String?
+  notes                         String?
+
+  // Soft pointers to upstream baseline / TB-004 / TB-005 / TB-006 (or null).
+  sourceBaselineMetricId   String?
+  sourceContentOperationId String?
+  sourceLivePlanningId     String?
+  sourceLeadConversionId   String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("DataReviewCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("DataReviewUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

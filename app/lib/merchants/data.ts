@@ -38,6 +38,8 @@ export function getMerchantById(id: string) {
       livePlanning: { include: { updatedBy: true } },
       // P2-009: include the 1-1 TB-006 lead conversion (with its updater).
       leadConversion: { include: { updatedBy: true } },
+      // P2-010: include the 1-1 TB-007 data review (with its updater).
+      dataReview: { include: { updatedBy: true } },
     },
   });
 }

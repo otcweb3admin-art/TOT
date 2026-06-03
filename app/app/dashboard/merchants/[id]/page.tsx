@@ -464,6 +464,74 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-007 数据复盘（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/data-review`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.dataReview ? "编辑复盘" : "创建复盘"}
+          </Link>
+        </div>
+        {merchant.dataReview ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.dataReview.status)}
+            {row("复盘周期", merchant.dataReview.reviewPeriodLabel)}
+            {row("目标完成度", merchant.dataReview.goalCompletionSummary)}
+            {row("内容效果", merchant.dataReview.contentEffectSummary)}
+            {row("直播效果", merchant.dataReview.liveEffectSummary)}
+            {row(
+              "引流转化效果",
+              merchant.dataReview.leadConversionEffectSummary,
+            )}
+            {row("真实经营数据", merchant.dataReview.realBusinessDataSummary)}
+            {row("问题诊断", merchant.dataReview.problemDiagnosisSummary)}
+            {row("优化建议", merchant.dataReview.optimizationSuggestionSummary)}
+            {row("策略判断", merchant.dataReview.strategyJudgmentSummary)}
+            {row("归因观察", merchant.dataReview.attributionObservationSummary)}
+            {row("复盘风险", merchant.dataReview.reviewRiskSummary)}
+            {row("备注", merchant.dataReview.notes)}
+            {row(
+              "引用基准数据",
+              merchant.dataReview.sourceBaselineMetricId ? "已引用当前基准" : "未引用",
+            )}
+            {row(
+              "引用 TB-004 内容运营",
+              merchant.dataReview.sourceContentOperationId
+                ? "已引用当前内容运营"
+                : "未引用",
+            )}
+            {row(
+              "引用 TB-005 直播规划",
+              merchant.dataReview.sourceLivePlanningId
+                ? "已引用当前直播规划"
+                : "未引用",
+            )}
+            {row(
+              "引用 TB-006 引流转化",
+              merchant.dataReview.sourceLeadConversionId
+                ? "已引用当前引流转化"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.dataReview.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.dataReview.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无数据复盘。点击「创建复盘」录入 TB-007 最小数据复盘（可引用当前基准 + TB-004/005/006 作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>
