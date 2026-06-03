@@ -407,6 +407,63 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-006 引流转化（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/lead-conversion`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.leadConversion ? "编辑方案" : "创建方案"}
+          </Link>
+        </div>
+        {merchant.leadConversion ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.leadConversion.status)}
+            {row("引流路径", merchant.leadConversion.trafficPathSummary)}
+            {row("转化路径", merchant.leadConversion.conversionPathSummary)}
+            {row("私域承接", merchant.leadConversion.privateDomainSummary)}
+            {row("活动想法", merchant.leadConversion.campaignIdeaSummary)}
+            {row(
+              "Google Maps 动作",
+              merchant.leadConversion.googleMapsActionSummary,
+            )}
+            {row("投流测试方向", merchant.leadConversion.paidTrafficTestSummary)}
+            {row("P-001 准备度", merchant.leadConversion.p001ReadinessSummary)}
+            {row("30 天动作", merchant.leadConversion.thirtyDayActionSummary)}
+            {row("归因方式", merchant.leadConversion.attributionMethodSummary)}
+            {row("转化风险", merchant.leadConversion.conversionRiskSummary)}
+            {row("备注", merchant.leadConversion.notes)}
+            {row(
+              "引用 TB-004 内容运营",
+              merchant.leadConversion.sourceContentOperationId
+                ? "已引用当前内容运营"
+                : "未引用",
+            )}
+            {row(
+              "引用 TB-005 直播规划",
+              merchant.leadConversion.sourceLivePlanningId
+                ? "已引用当前直播规划"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.leadConversion.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.leadConversion.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无引流转化方案。点击「创建方案」录入 TB-006 最小引流转化（可引用当前 TB-004 内容运营 + TB-005 直播规划作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>

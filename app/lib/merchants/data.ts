@@ -36,6 +36,8 @@ export function getMerchantById(id: string) {
       contentOperation: { include: { updatedBy: true } },
       // P2-008: include the 1-1 TB-005 live planning (with its updater).
       livePlanning: { include: { updatedBy: true } },
+      // P2-009: include the 1-1 TB-006 lead conversion (with its updater).
+      leadConversion: { include: { updatedBy: true } },
     },
   });
 }

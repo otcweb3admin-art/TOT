@@ -90,6 +90,10 @@ model UserProfile {
   // P2-008: back-relations for MerchantLivePlanning audit FKs.
   livePlanningsCreated MerchantLivePlanning[] @relation("LivePlanningCreatedBy")
   livePlanningsUpdated MerchantLivePlanning[] @relation("LivePlanningUpdatedBy")
+
+  // P2-009: back-relations for MerchantLeadConversion audit FKs.
+  leadConversionsCreated MerchantLeadConversion[] @relation("LeadConversionCreatedBy")
+  leadConversionsUpdated MerchantLeadConversion[] @relation("LeadConversionUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -147,6 +151,9 @@ model Merchant {
 
   // P2-008: optional 1-1 TB-005 live planning.
   livePlanning MerchantLivePlanning?
+
+  // P2-009: optional 1-1 TB-006 lead conversion.
+  leadConversion MerchantLeadConversion?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -431,6 +438,54 @@ model MerchantLivePlanning {
   createdBy          UserProfile @relation("LivePlanningCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("LivePlanningUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-009 TB-006 Lead Conversion Foundation =====
+// MINIMAL human-written TB-006 lead-conversion PLAN (traffic + conversion + attribution
+// direction). This is NOT the full TB-006 output set, NOT ad spend / campaign execution,
+// NOT ROI computation, NOT attribution algorithms, NOT MVS, NOT real campaign execution,
+// NOT private-domain tooling, NOT Google-Maps / TikTok / FB / IG / ad-platform APIs.
+// 1-1 with Merchant; all summary fields optional. Can REFERENCE the merchant's current
+// TB-004 MerchantContentOperation AND TB-005 MerchantLivePlanning as upstream inputs via
+// soft id pointers (sourceContentOperationId / sourceLivePlanningId — NOT enforced FKs).
+// Campaign / AdSpend / ROI / AttributionRecord / Lead / Conversion tables are later
+// MVS / Campaign / Attribution phases — NOT built here.
+enum LeadConversionStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantLeadConversion {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status                   LeadConversionStatus @default(draft)
+  trafficPathSummary       String?
+  conversionPathSummary    String?
+  privateDomainSummary     String?
+  campaignIdeaSummary      String?
+  googleMapsActionSummary  String?
+  paidTrafficTestSummary   String?
+  p001ReadinessSummary     String?
+  thirtyDayActionSummary   String?
+  conversionRiskSummary    String?
+  attributionMethodSummary String?
+  notes                    String?
+
+  // Soft pointers to upstream TB-004 content operation / TB-005 live planning (or null).
+  sourceContentOperationId String?
+  sourceLivePlanningId     String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("LeadConversionCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("LeadConversionUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
