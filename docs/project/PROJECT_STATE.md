@@ -7,7 +7,7 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。**P2-001 Merchant Intake Foundation 完成**（TASK-027）+ **P2-002 Merchant Profile Asset Foundation 完成**（2026-06-03，TASK-028：第一类商家资产 `MerchantProfile`，1-1 摘要级画像，创建/查看/更新闭环，本地手工 10 项全绿）。下一步：P2-003（如 TB-001 录入切片 / 其它资产）。
+业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。**P2-001 Merchant Intake Foundation 完成**（TASK-027）+ **P2-002 Merchant Profile Asset Foundation 完成**（2026-06-03，TASK-028：第一类商家资产 `MerchantProfile`，1-1 摘要级画像，创建/查看/更新闭环，本地手工 10 项全绿）。**P2-003 Merchant Baseline Metric Foundation 完成**（2026-06-03，TASK-029：第一块增长验证基线 `MerchantBaselineMetric`，含数字字段校验，本地手工 11 项全绿）。下一步：P2-004（如 TB-001 录入切片）。
 
 ## 当前阶段
 - **文档/架构**：Phase 0–2 + 增长运行机制六层闭环，已相当完整。
@@ -45,7 +45,11 @@
   - DAL `getMerchantById` 增 include `profile`（含 updatedBy）。
   - **边界守住**：仅**摘要级**字段，**非完整 TB-001**（无完整客群/卖点矩阵、P-001 预算、诊断评分、AI 输出）；权限仍简化（登录即可编辑任意商家画像，`profile-actions.ts` 注释 TODO 待权限模型）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（4 migrations, up to date）✓ / 本地手工 10 项全绿（登录→详情→创建画像→填写→保存回详情→详情显示摘要→再次编辑 growthGoal→+40%→DB `MerchantProfile`(count=1, merchantId 匹配, updated_after_create)→createdBy=updatedBy=当前 profile→未登录 307）。tag `checkpoint-p2-002-merchant-profile`。
-- **下一步 P2-003**：按架构继续（如 TB-001 录入切片 / 其它商家资产）；仍守 AI 不拍板 / 人工审核。
+- **P2-003 Merchant Baseline Metric Foundation 完成 ✅**（2026-06-03，TASK-029）：第一块**增长验证基线 `MerchantBaselineMetric`**（migration `20260603125448_p2_merchant_baseline_metric_foundation`；**1-1** with Merchant，`@unique`+`onDelete:Cascade`；Decimal/Int 数值字段 + `BaselineDataConfidence{unknown,low,medium,high}` 枚举；createdBy/updatedBy → `UserProfile.id`）。
+  - 页面：`/dashboard/merchants/[id]/baseline`（创建/编辑表单，`saveMerchantBaselineMetric` upsert，merchantId 服务端 bind、`requireUser()` 守卫、**数字字段校验**：空→null / 非数字→报错 / 负数→拒绝，错误不写脏数据）；商家详情页加「增长前基准数据」区块。
+  - **边界守住**：**非完整 MVS / Metric / KPI / ROI / 归因 / 图表**；`dataConfidence` 仅最小可信度标记（**未结构化 Evidence E1/E2/E3**）；权限仍简化（`baseline-actions.ts` 注释 TODO 待权限模型）。
+  - 验证：build ✓ / lint ✓ / `prisma migrate status`（5 migrations, up to date）✓ / 本地手工 11 项全绿（含 item 11：非法输入 `abc`/`-5` 被拒并报错、`count` 仍 1、DB 未污染）。tag `checkpoint-p2-003-merchant-baseline`。
+- **下一步 P2-004**：按架构继续（如 TB-001 录入切片 / 其它资产）；仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。

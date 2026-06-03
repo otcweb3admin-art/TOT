@@ -111,6 +111,49 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            增长前基准数据（Baseline Metrics）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/baseline`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.baseline ? "编辑基准" : "创建基准"}
+          </Link>
+        </div>
+        {merchant.baseline ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("统计周期", merchant.baseline.periodLabel)}
+            {row("月营业额", merchant.baseline.monthlyRevenue?.toString())}
+            {row("月客户数", merchant.baseline.monthlyCustomerCount?.toString())}
+            {row("月咨询数", merchant.baseline.monthlyLeadCount?.toString())}
+            {row("月成交数", merchant.baseline.monthlyConversionCount?.toString())}
+            {row("客单价", merchant.baseline.averageOrderValue?.toString())}
+            {row("复购率", merchant.baseline.repeatCustomerRate?.toString())}
+            {row("粉丝数", merchant.baseline.followerCount?.toString())}
+            {row("评论数", merchant.baseline.reviewCount?.toString())}
+            {row("平均评分", merchant.baseline.averageRating?.toString())}
+            {row("数据来源", merchant.baseline.sourceNote)}
+            {row("数据可信度", merchant.baseline.dataConfidence)}
+            {row("备注", merchant.baseline.notes)}
+            {row(
+              "更新时间",
+              merchant.baseline.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.baseline.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无增长前基准数据。点击「创建基准」录入（为后续 TB-001 / MVS / 复盘 / 经验沉淀提供对照基线）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>

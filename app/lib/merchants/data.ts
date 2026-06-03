@@ -24,6 +24,8 @@ export function getMerchantById(id: string) {
       createdBy: true,
       // P2-002: include the 1-1 profile asset (with its updater) for the detail page.
       profile: { include: { updatedBy: true, createdBy: true } },
+      // P2-003: include the 1-1 baseline metric asset (with its updater).
+      baseline: { include: { updatedBy: true } },
     },
   });
 }

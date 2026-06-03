@@ -66,6 +66,10 @@ model UserProfile {
   // P2-002: back-relations for MerchantProfile audit FKs.
   merchantProfilesCreated MerchantProfile[] @relation("MerchantProfileCreatedBy")
   merchantProfilesUpdated MerchantProfile[] @relation("MerchantProfileUpdatedBy")
+
+  // P2-003: back-relations for MerchantBaselineMetric audit FKs.
+  baselineMetricsCreated MerchantBaselineMetric[] @relation("BaselineCreatedBy")
+  baselineMetricsUpdated MerchantBaselineMetric[] @relation("BaselineUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -106,6 +110,9 @@ model Merchant {
   // P2-002: optional 1-1 profile asset.
   profile MerchantProfile?
 
+  // P2-003: optional 1-1 baseline metric asset.
+  baseline MerchantBaselineMetric?
+
   @@index([ownerProfileId])
   @@index([createdByProfileId])
   @@index([status])
@@ -137,6 +144,48 @@ model MerchantProfile {
   createdBy          UserProfile @relation("MerchantProfileCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("MerchantProfileUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-003 Merchant Baseline Metric Foundation =====
+// First VERIFIABLE-RESULT INPUT: pre-growth baseline metrics that later TB-001 / MVS /
+// ROI / attribution / review / experience compare against. This is NOT a full metric /
+// KPI / MVS system, NOT ROI/attribution computation, NOT time-series, NOT charts.
+// 1-1 with Merchant; all fields optional. `dataConfidence` is a MINIMAL trust marker
+// (NOT the Evidence Framework E1/E2/E3 structure — see evidence-framework-specification-v1).
+enum BaselineDataConfidence {
+  unknown // 未知 / 未判断
+  low // 口头估计
+  medium // 有部分记录
+  high // 有完整数据来源
+}
+
+model MerchantBaselineMetric {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  periodLabel            String?
+  monthlyRevenue         Decimal? @db.Decimal(14, 2)
+  monthlyCustomerCount   Int?
+  monthlyLeadCount       Int?
+  monthlyConversionCount Int?
+  averageOrderValue      Decimal? @db.Decimal(12, 2)
+  repeatCustomerRate     Decimal? @db.Decimal(5, 2)
+  followerCount          Int?
+  reviewCount            Int?
+  averageRating          Decimal? @db.Decimal(3, 2)
+  sourceNote             String?
+  dataConfidence         BaselineDataConfidence @default(unknown)
+  notes                  String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("BaselineCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("BaselineUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
