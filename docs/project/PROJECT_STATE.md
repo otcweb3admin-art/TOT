@@ -101,7 +101,8 @@
   - 测试数据卫生：所有造数据带前缀 `SMOKE_TEST_`，`finally` 严格按 `name startsWith SMOKE_TEST_`（+临时 profile email 前缀）清理（失败也清）；Merchant 删除经 `onDelete:Cascade` 连带 11 资产；**绝不碰真实数据**。
   - 工具链：新增 devDep **`tsx`**（最小 TS runner，解析 tsconfig `@/` paths，无大型/浏览器依赖）；npm script **`smoke:p2`**（`node --env-file=.env --import tsx`）；`tsconfig.exclude` 加 `scripts`（脚本由 tsx 跑、不进 next build 类型检查）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（13 migrations·无变更）✓ / **`npm run smoke:p2` = 17/17 PASS·cleanup CLEAN·exit 0**；跑后 DB 无 `SMOKE_TEST_` 残留；输出无密钥；每步具名→失败可定位。tag `checkpoint-p2-014-smoke-test`。（注：`npm i` 报 2 个 esbuild 相关 moderate 漏洞，属 tsx 的 dev 依赖、仅开发期，未 `audit fix --force`。）
-- **下一步 P2-015（待用户定）**：可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience / ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 工作台增强 / ⑥ smoke 扩展（HTTP 层/CI）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
+- **架构（业务分析·无代码）：商家经营健康检查体系 V1 完成 ✅**（2026-06-04，TASK-043）：新增 [`docs/project/merchant-operating-health-check-architecture-v1.md`](./merchant-operating-health-check-architecture-v1.md)——吸收"小吃车五脏俱全"模型，建立**五器官经营健康判断框架**（渠道/Offer/履约/现金流/组织），增长前横向体检"商家是否接得住放大"。**纯文档，未改代码/schema/migration**。**关键发现**：现有 TB 链路强在"做流量"，但**履约(Fulfillment) + 组织(Organization) 两格几乎无专门资产节点**=最易"增长变风险放大器"的漏血点，建议后续诊断/工作台先把这两格显性化。守 Human Commercial Authority（只评估、不决定是否合作）。tag `checkpoint-operating-health-check-v1`。
+- **下一步 P2-015（待用户定）**：可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience / ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 工作台增强（如**承载五器官健康摘要只读视图**）/ ⑥ smoke 扩展（HTTP 层/CI）/ ⑦ 经营健康检查落地（履约/组织维度）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。
