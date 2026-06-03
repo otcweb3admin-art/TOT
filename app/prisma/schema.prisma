@@ -62,6 +62,10 @@ model UserProfile {
   // P2-001: back-relations for Merchant FKs (merchants this profile owns / created).
   merchantsOwned   Merchant[] @relation("MerchantOwner")
   merchantsCreated Merchant[] @relation("MerchantCreatedBy")
+
+  // P2-002: back-relations for MerchantProfile audit FKs.
+  merchantProfilesCreated MerchantProfile[] @relation("MerchantProfileCreatedBy")
+  merchantProfilesUpdated MerchantProfile[] @relation("MerchantProfileUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -99,7 +103,41 @@ model Merchant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // P2-002: optional 1-1 profile asset.
+  profile MerchantProfile?
+
   @@index([ownerProfileId])
   @@index([createdByProfileId])
   @@index([status])
+}
+
+// ===== P2-002 Merchant Profile Asset Foundation =====
+// First MERCHANT ASSET: a SUMMARY-level profile that feeds later TB-001 / diagnostic /
+// strategy / planning. This is NOT the full TB-001 form, NOT diagnostic scoring, NOT AI
+// output, NOT P-001 budget detail. 1-1 with Merchant; all summary fields optional.
+// Maps to merchant-asset-catalog-v1 "Merchant Profile Asset" (行业 / 客群画像 / 核心卖点 /
+// 执行红线 / 增长目标 / 增长前基准) at a summary level only.
+model MerchantProfile {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  industryDetail            String?
+  targetCustomerSummary     String?
+  coreOfferSummary          String?
+  currentAcquisitionSummary String?
+  onlinePresenceSummary     String?
+  growthGoalSummary         String?
+  executionLimitSummary     String?
+  baselineDataSummary       String?
+  notes                     String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("MerchantProfileCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("MerchantProfileUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

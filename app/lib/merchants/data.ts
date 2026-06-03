@@ -19,6 +19,11 @@ export function listMerchants() {
 export function getMerchantById(id: string) {
   return prisma.merchant.findUnique({
     where: { id },
-    include: { owner: true, createdBy: true },
+    include: {
+      owner: true,
+      createdBy: true,
+      // P2-002: include the 1-1 profile asset (with its updater) for the detail page.
+      profile: { include: { updatedBy: true, createdBy: true } },
+    },
   });
 }

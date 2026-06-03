@@ -72,6 +72,45 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            商家画像（Merchant Profile）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/profile`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.profile ? "编辑画像" : "创建画像"}
+          </Link>
+        </div>
+        {merchant.profile ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("行业细分", merchant.profile.industryDetail)}
+            {row("目标客群", merchant.profile.targetCustomerSummary)}
+            {row("核心卖点", merchant.profile.coreOfferSummary)}
+            {row("当前获客", merchant.profile.currentAcquisitionSummary)}
+            {row("线上情况", merchant.profile.onlinePresenceSummary)}
+            {row("增长目标", merchant.profile.growthGoalSummary)}
+            {row("执行限制", merchant.profile.executionLimitSummary)}
+            {row("基准数据", merchant.profile.baselineDataSummary)}
+            {row("备注", merchant.profile.notes)}
+            {row(
+              "更新时间",
+              merchant.profile.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.profile.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无商家画像。点击「创建画像」录入摘要级画像信息（为后续 TB-001 / 诊断 / 策略提供输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>
