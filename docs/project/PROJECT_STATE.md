@@ -7,7 +7,7 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。下一步：**配 Vercel 两变量验证线上登录** →（之后 P2 业务模块）。
+业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。下一步：**P2 第一个业务模块**。
 
 ## 当前阶段
 - **文档/架构**：Phase 0–2 + 增长运行机制六层闭环，已相当完整。
@@ -33,11 +33,11 @@
   3. ✅ 实跑链路：`/login` 填表单 → `POST /login 303 ƒ login()` → `/dashboard`（显示 `admin@tot.local / operator / active`）→ 登出 `POST /dashboard 303 ƒ logout()` → `/login` → 登出后访问 `/dashboard` 被守卫弹回 `/login`。DAL 首登建档 `UserProfile{operator,active}` 生效。
   - ⚠️ **DB 直建用户的坑**：GoTrue 把 `confirmation_token/recovery_token/email_change/...` 等列按"非空字符串"读取，手工插入留 `NULL` 会致 `500 Database error querying schema`；已 `COALESCE` 补空串、`email_change_confirm_status` 补 0 修复（详见 CLAUDE.md 决策）。
 - **TASK-025 收尾完成 ✅**（2026-06-03）：`npm run build` ✓ / `npm run lint` ✓ / 密钥审计干净（`app/.env` 未入库，仅 `.env.example` 占位；`settings.local.json`【含 Vercel token】已被 gitignore）。P1 代码 commit **`4cf8e88`**（`feat: implement p1 auth role foundation`，已推送）；里程碑 tag **`checkpoint-p1-auth-final`**（回滚还原点）。
-- **下一步：线上登录**（待用户）：把 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` 配到 **Vercel → Settings → Environment Variables（Production）** 并 redeploy → `tot-dun.vercel.app/login` 同样可登。
-- **之后 P2**：第一个业务模块（按架构，建议从"商家工单 + 9 节点 + TB-001 录入"的最小切片起；仍守 AI 不拍板/人工审核）。
+- **P1 Online Auth Verification completed ✅**（2026-06-03，TASK-026）：用户已配 Vercel `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY` 且已生效。验证方式（无可用浏览器 → 用 `@supabase/ssr` 同款库生成真实会话 cookie + curl 打线上）：`/health`=connected、`/login`=200、**带 session 的线上 `/dashboard`=HTTP 200** 且渲染 `admin@tot.local / operator / active / P1 Auth Foundation`、未登录 `/dashboard`→307 `/login`；logout 本地实跑通过（线上同代码）。tag `checkpoint-p1-online-verified`。
+- **下一步 P2**：第一个业务模块（按架构，建议从"商家工单 + 9 节点 + TB-001 录入"的最小切片起；仍守 AI 不拍板/人工审核）。
 
 ## 待决 / 待用户提供
-- **P1 本地登录已验证 ✅；线上登录待用户**：把 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` 配到 **Vercel → Environment Variables（Production）** 并 redeploy → `tot-dun.vercel.app/login` 可登。
+- **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。
   - service_role key（新版 `sb_secret_`）：P1 未用，配不配均可；若配**仅服务端、绝不入库/不暴露浏览器**。
   - 测试账号 `admin@tot.local`/`TotAdmin#2026` 为临时夹具，上线前改密码或删除。
 - **角色差异（需你定夺）**：角色枚举按 `ROLE_MODEL.md` 用 **6 个**（merchant/collector/operator/executor/admin/ai_worker）。SYSTEM_BLUEPRINT 另有 **`outsource`（第7个）**——已知文档差异（project-audit R2）。P1 **未发明、未删减**；若要纳入 outsource，后续加一个 migration 即可。
