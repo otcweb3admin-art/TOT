@@ -82,7 +82,10 @@
   - **边界守住**：**非完整 TB-008 Output / 非完整 90天执行系统 / 非自动排期 / 非 KPI 自动计算 / 非 AI 生成 / 非 MVS / 非 Experience / 非计划任务系统 / 非报表 / 非平台 API**；权限仍简化（`growth-plan-actions.ts` 注释 TODO 待权限模型）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（13 migrations, up to date）✓ / 本地手工 18 项全绿（四上游显基准+TB-001/006/007→创建(completed)→详情显示+四引用→更新(→archived)→DB `count=1`、四 source id 均匹配当前、createdBy=updatedBy=当前 profile、updated_after_create→未登录 307）。tag `checkpoint-p2-011-tb008-growth-plan`。
 - **🎯 里程碑：TB-001~008 模板节点最小地基全链完成**（P2-004~011）。商家详情页自上而下：画像 → 基准 → TB-001 诊断 → TB-002 账号搭建 → TB-003 素材采集 → TB-004 内容运营 → TB-005 直播规划 → TB-006 引流转化 → TB-007 数据复盘 → TB-008 90天增长计划，逐级软引用上游，形成"诊断→执行→复盘→再规划"最小回路；全部人工录入（守 AI 不拍板）。
-- **下一步 P2-012（待用户定）**：可选——① 角色/权限模型（owner-only / 角色矩阵，替换各 action 的 TODO）；② 某 TB 节点深化为完整 Output；③ MVS / Metric / Experience 阶段；④ 节点状态总览/列表页。仍守 AI 不拍板 / 人工审核。
+- **P2 审计 + 轻量重构完成 ✅**：
+  - **TASK-038 P2 链路只读审计**（`docs/project/p2-chain-review-and-refactor-check-v1.md`，tag `checkpoint-p2-chain-review`）：主链健康；建议先 **A 轻量重构 → B 权限模型**；最大债=零鉴权。
+  - **TASK-039 P2 轻量重构**（详情页展示层，tag `checkpoint-p2-refactor-presentation`）：抽出 `app/components/merchants/`（`MerchantAssetSection` / `AssetSummaryGrid` / `StatusBadge` / `format`{`formatDateTime`,`referenceLabel`}）；详情页 **620 → 446 行（-28%）**、重复 section/dl/空态 shell 集中到 4 个可复用组件；状态统一为徽章；**行为/展示逐字段保持**（唯一可见变化：状态由纯文本 → 统一徽章）；**无 schema/migration/DB/URL/action/节点页变更**；build/lint/migrate-status 全绿 + 手工回归 9 项通过。Action helper（审计 #5）按风险控制**留到下一轮**。
+- **下一步 P2-012（待用户定）**：审计推荐序为 **B 权限/角色模型**（owner-only / 6 角色矩阵，替换各 action 的 TODO；真实试点硬前置）；其后可选 ② 某 TB 深化 / ③ MVS·Metric·Experience / ④ 节点总览页 / 可选补 action-helper 重构（第二轮）。仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。
