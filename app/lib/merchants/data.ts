@@ -28,6 +28,8 @@ export function getMerchantById(id: string) {
       baseline: { include: { updatedBy: true } },
       // P2-004: include the 1-1 TB-001 minimal diagnosis (with its updater).
       diagnosis: { include: { updatedBy: true } },
+      // P2-005: include the 1-1 TB-002 account setup (with its updater).
+      accountSetup: { include: { updatedBy: true } },
     },
   });
 }

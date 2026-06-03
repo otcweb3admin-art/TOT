@@ -7,7 +7,7 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。**P2-001 Merchant Intake Foundation 完成**（TASK-027）+ **P2-002 Merchant Profile Asset Foundation 完成**（2026-06-03，TASK-028：第一类商家资产 `MerchantProfile`，1-1 摘要级画像，创建/查看/更新闭环，本地手工 10 项全绿）。**P2-003 Merchant Baseline Metric Foundation 完成**（2026-06-03，TASK-029：第一块增长验证基线 `MerchantBaselineMetric`，含数字字段校验，本地手工 11 项全绿）。**P2-004 TB-001 Minimal Intake Foundation 完成**（2026-06-03，TASK-030：TB-001 最小人工诊断 `MerchantDiagnosis`，1-1、可引用当前画像+基准作上游输入、创建/更新闭环）。下一步：P2-005（如完整 TB-001 深化 / 策略切片）。
+业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。**P2-001 Merchant Intake Foundation 完成**（TASK-027）+ **P2-002 Merchant Profile Asset Foundation 完成**（2026-06-03，TASK-028：第一类商家资产 `MerchantProfile`，1-1 摘要级画像，创建/查看/更新闭环，本地手工 10 项全绿）。**P2-003 Merchant Baseline Metric Foundation 完成**（2026-06-03，TASK-029：第一块增长验证基线 `MerchantBaselineMetric`，含数字字段校验，本地手工 11 项全绿）。**P2-004 TB-001 Minimal Intake Foundation 完成**（2026-06-03，TASK-030：TB-001 最小人工诊断 `MerchantDiagnosis`，1-1、可引用当前画像+基准作上游输入、创建/更新闭环）。**P2-005 TB-002 Account Setup Foundation 完成**（2026-06-03，TASK-031：第二个模板节点资产 `MerchantAccountSetup`，1-1、可引用当前 TB-001 诊断、创建/更新闭环，本地手工 12 项全绿）。下一步：P2-006（如 TB-003 素材采集 / 其它模板节点）。
 
 ## 当前阶段
 - **文档/架构**：Phase 0–2 + 增长运行机制六层闭环，已相当完整。
@@ -53,7 +53,11 @@
   - 页面：`/dashboard/merchants/[id]/diagnosis`（创建/编辑，`saveMerchantDiagnosis` upsert，merchantId bind、`requireUser()` 守卫；**显示上游输入只读上下文**=画像+基准；保存时记录当前画像/基准 id 作上游引用）；详情页加「TB-001 商家诊断（最小）」区块（状态/摘要/引用画像·基准/更新人）；占位列表移除「TB-001 商家诊断」。
   - **边界守住**：**非完整 TB-001 表单 / 非 AI 诊断 / 非评分 / 非审核流 / 非自动策略 / 非 Evidence 复杂对象 / 非 MVS / 非 Experience**；权限仍简化（`diagnosis-actions.ts` 注释 TODO 待权限模型）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（6 migrations, up to date）✓ / 本地手工：上游上下文显示画像+基准→创建(completed)→详情显示+引用画像/基准→更新(→archived)→DB `count=1`、`sourceProfileId/sourceBaselineMetricId` 匹配当前画像/基准、createdBy=updatedBy=当前 profile、updated_after_create→未登录 307。tag `checkpoint-p2-004-tb001-minimal`。
-- **下一步 P2-005**：按架构继续（如完整 TB-001 深化 / 增长诊断 / 策略切片）；仍守 AI 不拍板 / 人工审核。
+- **P2-005 TB-002 Account Setup Foundation 完成 ✅**（2026-06-03，TASK-031）：第二个模板节点**账号搭建资产 `MerchantAccountSetup`**（migration `20260603144206_p2_tb002_account_setup_foundation`；**1-1** with Merchant，`@unique`+`onDelete:Cascade`；`AccountSetupStatus{draft,completed,archived}`；平台/定位/命名/Bio/视觉/人设/GMaps/联系/风险 等摘要字段 + `sourceDiagnosisId` **软引用**当前 TB-001 诊断；createdBy/updatedBy → `UserProfile.id`）。
+  - 页面：`/dashboard/merchants/[id]/account-setup`（创建/编辑，`saveMerchantAccountSetup` upsert，merchantId bind、`requireUser()` 守卫；**显示上游 TB-001 诊断只读上下文**；保存时记录当前 diagnosis id）；详情页加「TB-002 账号搭建（最小）」区块。
+  - **边界守住**：**非完整 TB-002 Output / 非真实建号 / 非 TikTok·FB·IG·GMaps API / 非 AI / 非 Channel Asset / 非内容采集运营 / 非引流转化 / 非 MVS / 非审核流**；权限仍简化（`account-setup-actions.ts` 注释 TODO 待权限模型）。
+  - 验证：build ✓ / lint ✓ / `prisma migrate status`（7 migrations, up to date）✓ / 本地手工 12 项全绿（上游显 TB-001 诊断→创建(completed)→详情显示+引用诊断→更新(→archived)→DB `count=1`、`sourceDiagnosisId` 匹配当前诊断、createdBy=updatedBy=当前 profile、updated_after_create→未登录 307）。tag `checkpoint-p2-005-tb002-account-setup`。
+- **下一步 P2-006**：按架构继续（如 TB-003 素材采集 / 其它模板节点）；仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。

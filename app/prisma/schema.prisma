@@ -74,6 +74,10 @@ model UserProfile {
   // P2-004: back-relations for MerchantDiagnosis audit FKs.
   diagnosesCreated MerchantDiagnosis[] @relation("DiagnosisCreatedBy")
   diagnosesUpdated MerchantDiagnosis[] @relation("DiagnosisUpdatedBy")
+
+  // P2-005: back-relations for MerchantAccountSetup audit FKs.
+  accountSetupsCreated MerchantAccountSetup[] @relation("AccountSetupCreatedBy")
+  accountSetupsUpdated MerchantAccountSetup[] @relation("AccountSetupUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -119,6 +123,9 @@ model Merchant {
 
   // P2-004: optional 1-1 TB-001 minimal diagnosis.
   diagnosis MerchantDiagnosis?
+
+  // P2-005: optional 1-1 TB-002 account setup.
+  accountSetup MerchantAccountSetup?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -232,6 +239,49 @@ model MerchantDiagnosis {
   createdBy          UserProfile @relation("DiagnosisCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("DiagnosisUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-005 TB-002 Account Setup Foundation =====
+// MINIMAL human-written TB-002 account-setup plan (platform + account direction). This
+// is NOT the full TB-002 output set, NOT real account creation, NOT TikTok/Facebook/
+// Instagram/Google-Maps API integration, NOT AI generation, NOT a Channel Asset system,
+// NOT content/operation/conversion, NOT MVS, NOT a review flow. 1-1 with Merchant; all
+// summary fields optional. Can REFERENCE the merchant's current TB-001 MerchantDiagnosis
+// as upstream input via a soft id pointer (sourceDiagnosisId — NOT an enforced FK).
+enum AccountSetupStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantAccountSetup {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status                     AccountSetupStatus @default(draft)
+  platformPlanSummary        String?
+  accountPositioningSummary  String?
+  namingDirection            String?
+  bioDirection               String?
+  visualDirectionSummary     String?
+  personaDirectionSummary    String?
+  googleMapsDirectionSummary String?
+  contactChannelSummary      String?
+  setupRiskSummary           String?
+  notes                      String?
+
+  // Soft pointer to the upstream TB-001 diagnosis used (current diagnosis id, or null).
+  sourceDiagnosisId String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("AccountSetupCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("AccountSetupUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

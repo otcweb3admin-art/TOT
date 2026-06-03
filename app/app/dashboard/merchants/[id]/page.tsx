@@ -199,6 +199,56 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-002 账号搭建（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/account-setup`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.accountSetup ? "编辑方案" : "创建方案"}
+          </Link>
+        </div>
+        {merchant.accountSetup ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.accountSetup.status)}
+            {row("平台计划", merchant.accountSetup.platformPlanSummary)}
+            {row("账号定位", merchant.accountSetup.accountPositioningSummary)}
+            {row("命名方向", merchant.accountSetup.namingDirection)}
+            {row("Bio 方向", merchant.accountSetup.bioDirection)}
+            {row("视觉方向", merchant.accountSetup.visualDirectionSummary)}
+            {row("人设方向", merchant.accountSetup.personaDirectionSummary)}
+            {row(
+              "Google Maps 方向",
+              merchant.accountSetup.googleMapsDirectionSummary,
+            )}
+            {row("联系方式 / 私域", merchant.accountSetup.contactChannelSummary)}
+            {row("风险", merchant.accountSetup.setupRiskSummary)}
+            {row("备注", merchant.accountSetup.notes)}
+            {row(
+              "引用 TB-001 诊断",
+              merchant.accountSetup.sourceDiagnosisId
+                ? "已引用当前诊断"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.accountSetup.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.accountSetup.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无账号搭建方案。点击「创建方案」录入 TB-002 最小账号搭建（可引用当前 TB-001 诊断作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>
