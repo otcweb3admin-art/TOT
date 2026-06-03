@@ -32,6 +32,7 @@
   2. ✅ `app/.env` 已填 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`（新版 `sb_publishable_`）+ `SUPABASE_SERVICE_ROLE_KEY`（新版 `sb_secret_`，P1 未用）。
   3. ✅ 实跑链路：`/login` 填表单 → `POST /login 303 ƒ login()` → `/dashboard`（显示 `admin@tot.local / operator / active`）→ 登出 `POST /dashboard 303 ƒ logout()` → `/login` → 登出后访问 `/dashboard` 被守卫弹回 `/login`。DAL 首登建档 `UserProfile{operator,active}` 生效。
   - ⚠️ **DB 直建用户的坑**：GoTrue 把 `confirmation_token/recovery_token/email_change/...` 等列按"非空字符串"读取，手工插入留 `NULL` 会致 `500 Database error querying schema`；已 `COALESCE` 补空串、`email_change_confirm_status` 补 0 修复（详见 CLAUDE.md 决策）。
+- **TASK-025 收尾完成 ✅**（2026-06-03）：`npm run build` ✓ / `npm run lint` ✓ / 密钥审计干净（`app/.env` 未入库，仅 `.env.example` 占位；`settings.local.json`【含 Vercel token】已被 gitignore）。P1 代码 commit **`4cf8e88`**（`feat: implement p1 auth role foundation`，已推送）；里程碑 tag **`checkpoint-p1-auth-final`**（回滚还原点）。
 - **下一步：线上登录**（待用户）：把 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` 配到 **Vercel → Settings → Environment Variables（Production）** 并 redeploy → `tot-dun.vercel.app/login` 同样可登。
 - **之后 P2**：第一个业务模块（按架构，建议从"商家工单 + 9 节点 + TB-001 录入"的最小切片起；仍守 AI 不拍板/人工审核）。
 
