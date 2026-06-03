@@ -357,6 +357,56 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-005 直播规划（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/live-planning`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.livePlanning ? "编辑方案" : "创建方案"}
+          </Link>
+        </div>
+        {merchant.livePlanning ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.livePlanning.status)}
+            {row("直播可行性", merchant.livePlanning.feasibilitySummary)}
+            {row("直播平台", merchant.livePlanning.platformSummary)}
+            {row("直播目标", merchant.livePlanning.liveGoalSummary)}
+            {row("直播形式", merchant.livePlanning.liveFormatSummary)}
+            {row("直播主题", merchant.livePlanning.liveTopicSummary)}
+            {row("直播频率", merchant.livePlanning.liveFrequencySummary)}
+            {row(
+              "出镜 / 人员要求",
+              merchant.livePlanning.hostPeopleRequirementSummary,
+            )}
+            {row("执行准备度", merchant.livePlanning.readinessSummary)}
+            {row("直播风险", merchant.livePlanning.liveRiskSummary)}
+            {row("备注", merchant.livePlanning.notes)}
+            {row(
+              "引用 TB-004 内容运营",
+              merchant.livePlanning.sourceContentOperationId
+                ? "已引用当前内容运营"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.livePlanning.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.livePlanning.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无直播规划方案。点击「创建方案」录入 TB-005 最小直播规划（可引用当前 TB-004 内容运营作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>

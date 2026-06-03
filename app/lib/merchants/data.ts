@@ -34,6 +34,8 @@ export function getMerchantById(id: string) {
       materialCollection: { include: { updatedBy: true } },
       // P2-007: include the 1-1 TB-004 content operation (with its updater).
       contentOperation: { include: { updatedBy: true } },
+      // P2-008: include the 1-1 TB-005 live planning (with its updater).
+      livePlanning: { include: { updatedBy: true } },
     },
   });
 }
