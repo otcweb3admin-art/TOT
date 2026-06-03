@@ -272,12 +272,20 @@ export default async function MerchantDetailPage({
             商家详情 · P2 Merchant Intake Foundation
           </p>
         </div>
-        <Link
-          href="/dashboard/merchants"
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-        >
-          ← 列表
-        </Link>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href={`${base}/workspace`}
+            className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white dark:bg-white dark:text-zinc-900"
+          >
+            打开工作台
+          </Link>
+          <Link
+            href="/dashboard/merchants"
+            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
+          >
+            ← 列表
+          </Link>
+        </div>
       </header>
 
       {/* 基础信息 — always present (no create/edit link), so a plain section. */}

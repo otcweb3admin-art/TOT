@@ -2,6 +2,8 @@
 // draft/completed/archived). PRESENTATION-ONLY (TASK-039 refactor): the status value and
 // its meaning are unchanged — only the rendering is unified into a consistent pill.
 const STATUS_STYLES: Record<string, string> = {
+  // P2-013: workspace node-overview pseudo-status (asset not yet created).
+  missing: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
   draft: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
   completed:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",

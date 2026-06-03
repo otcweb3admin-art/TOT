@@ -46,7 +46,8 @@ export default async function MerchantsPage() {
               <th className="py-2 pr-4 font-medium">行业</th>
               <th className="py-2 pr-4 font-medium">城市 / 国家</th>
               <th className="py-2 pr-4 font-medium">状态</th>
-              <th className="py-2 font-medium">创建时间</th>
+              <th className="py-2 pr-4 font-medium">创建时间</th>
+              <th className="py-2 font-medium">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -68,7 +69,15 @@ export default async function MerchantsPage() {
                   {[m.city, m.country].filter(Boolean).join(" / ") || "—"}
                 </td>
                 <td className="py-2 pr-4">{m.status}</td>
-                <td className="py-2">{m.createdAt.toISOString().slice(0, 10)}</td>
+                <td className="py-2 pr-4">{m.createdAt.toISOString().slice(0, 10)}</td>
+                <td className="py-2">
+                  <Link
+                    href={`/dashboard/merchants/${m.id}/workspace`}
+                    className="underline-offset-2 hover:underline"
+                  >
+                    工作台
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>
