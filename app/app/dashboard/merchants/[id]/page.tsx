@@ -20,9 +20,9 @@ export default async function MerchantDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser(); // guard: unauthenticated -> /login
+  const user = await requireUser(); // guard: unauthenticated -> /login
   const { id } = await params; // Next 16: params is async
-  const merchant = await getMerchantById(id);
+  const merchant = await getMerchantById(id, user);
   if (!merchant) notFound();
 
   const base = `/dashboard/merchants/${merchant.id}`;

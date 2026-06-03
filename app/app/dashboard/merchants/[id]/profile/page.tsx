@@ -11,9 +11,9 @@ export default async function EditMerchantProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser(); // guard: unauthenticated -> /login
+  const user = await requireUser(); // guard: unauthenticated -> /login
   const { id } = await params;
-  const merchant = await getMerchantById(id);
+  const merchant = await getMerchantById(id, user);
   if (!merchant) notFound();
 
   return (

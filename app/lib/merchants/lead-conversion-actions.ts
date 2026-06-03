@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
+import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
 
 export type SaveLeadConversionState = { error: string } | undefined;
 
@@ -24,6 +25,11 @@ export async function saveMerchantLeadConversion(
   formData: FormData,
 ): Promise<SaveLeadConversionState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
+
+  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  if (accessError) {
+    return { error: accessError };
+  }
 
   // Fetch merchant + ids of its current upstream TB-004 content op / TB-005 live planning.
   const merchant = await prisma.merchant.findUnique({

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
+import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
 
 export type SaveDiagnosisState = { error: string } | undefined;
 
@@ -23,6 +24,11 @@ export async function saveMerchantDiagnosis(
   formData: FormData,
 ): Promise<SaveDiagnosisState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
+
+  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  if (accessError) {
+    return { error: accessError };
+  }
 
   // Fetch merchant + the ids of its current upstream inputs (profile / baseline).
   const merchant = await prisma.merchant.findUnique({

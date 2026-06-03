@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
+import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
 
 export type SaveMaterialCollectionState = { error: string } | undefined;
 
@@ -24,6 +25,11 @@ export async function saveMerchantMaterialCollection(
   formData: FormData,
 ): Promise<SaveMaterialCollectionState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
+
+  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  if (accessError) {
+    return { error: accessError };
+  }
 
   // Fetch merchant + the id of its current upstream TB-002 account setup.
   const merchant = await prisma.merchant.findUnique({

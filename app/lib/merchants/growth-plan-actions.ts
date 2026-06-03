@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
+import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
 
 export type SaveGrowthPlanState = { error: string } | undefined;
 
@@ -25,6 +26,11 @@ export async function saveMerchantNinetyDayGrowthPlan(
   formData: FormData,
 ): Promise<SaveGrowthPlanState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
+
+  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  if (accessError) {
+    return { error: accessError };
+  }
 
   // Fetch merchant + ids of current upstream baseline / TB-001 / TB-006 / TB-007.
   const merchant = await prisma.merchant.findUnique({

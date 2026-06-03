@@ -6,10 +6,10 @@ import { listMerchants } from "@/lib/merchants/data";
 export const dynamic = "force-dynamic";
 
 export default async function MerchantsPage() {
-  await requireUser(); // guard: unauthenticated -> /login
-  // P2-001: shows ALL merchants (no permission/visibility filter yet — see data.ts /
-  // PROJECT_STATE.md; role-based filtering lands in a later phase).
-  const merchants = await listMerchants();
+  const user = await requireUser(); // guard: unauthenticated -> /login
+  // P2 permission foundation (TASK-040): admin sees all merchants; other roles see only
+  // merchants they own / created (enforced in listMerchants via merchantVisibilityWhere).
+  const merchants = await listMerchants(user);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
