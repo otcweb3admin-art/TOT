@@ -70,6 +70,10 @@ model UserProfile {
   // P2-003: back-relations for MerchantBaselineMetric audit FKs.
   baselineMetricsCreated MerchantBaselineMetric[] @relation("BaselineCreatedBy")
   baselineMetricsUpdated MerchantBaselineMetric[] @relation("BaselineUpdatedBy")
+
+  // P2-004: back-relations for MerchantDiagnosis audit FKs.
+  diagnosesCreated MerchantDiagnosis[] @relation("DiagnosisCreatedBy")
+  diagnosesUpdated MerchantDiagnosis[] @relation("DiagnosisUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -112,6 +116,9 @@ model Merchant {
 
   // P2-003: optional 1-1 baseline metric asset.
   baseline MerchantBaselineMetric?
+
+  // P2-004: optional 1-1 TB-001 minimal diagnosis.
+  diagnosis MerchantDiagnosis?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -186,6 +193,45 @@ model MerchantBaselineMetric {
   createdBy          UserProfile @relation("BaselineCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("BaselineUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-004 TB-001 Minimal Intake Foundation =====
+// MINIMAL human-written TB-001 diagnosis. This is NOT the full TB-001 form, NOT AI
+// diagnosis, NOT scoring, NOT a review/approval flow, NOT auto strategy generation,
+// NOT Evidence complex objects, NOT MVS. 1-1 with Merchant. It can REFERENCE the
+// merchant's current MerchantProfile / MerchantBaselineMetric as upstream inputs via
+// soft id pointers (sourceProfileId / sourceBaselineMetricId — NOT enforced FKs;
+// full versioning/diagnostic depth is later-phase work).
+enum DiagnosisStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantDiagnosis {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status               DiagnosisStatus @default(draft)
+  diagnosisSummary     String?
+  growthProblemSummary String?
+  opportunitySummary   String?
+  riskSummary          String?
+  recommendedNextStep  String?
+
+  // Soft pointers to the upstream inputs used (the merchant's current profile / baseline).
+  sourceProfileId        String?
+  sourceBaselineMetricId String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("DiagnosisCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("DiagnosisUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

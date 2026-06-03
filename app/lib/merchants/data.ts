@@ -26,6 +26,8 @@ export function getMerchantById(id: string) {
       profile: { include: { updatedBy: true, createdBy: true } },
       // P2-003: include the 1-1 baseline metric asset (with its updater).
       baseline: { include: { updatedBy: true } },
+      // P2-004: include the 1-1 TB-001 minimal diagnosis (with its updater).
+      diagnosis: { include: { updatedBy: true } },
     },
   });
 }

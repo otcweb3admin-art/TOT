@@ -6,9 +6,8 @@ import { getMerchantById } from "@/lib/merchants/data";
 
 export const dynamic = "force-dynamic";
 
-// Placeholder only — these modules are NOT implemented in P2-001.
+// Placeholder only — these modules are NOT implemented yet.
 const FUTURE_MODULES = [
-  "TB-001 商家诊断",
   "增长诊断",
   "策略",
   "计划",
@@ -149,6 +148,52 @@ export default async function MerchantDetailPage({
         ) : (
           <p className="text-sm text-zinc-500">
             暂无增长前基准数据。点击「创建基准」录入（为后续 TB-001 / MVS / 复盘 / 经验沉淀提供对照基线）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-001 商家诊断（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/diagnosis`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.diagnosis ? "编辑诊断" : "创建诊断"}
+          </Link>
+        </div>
+        {merchant.diagnosis ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.diagnosis.status)}
+            {row("诊断摘要", merchant.diagnosis.diagnosisSummary)}
+            {row("增长问题", merchant.diagnosis.growthProblemSummary)}
+            {row("机会点", merchant.diagnosis.opportunitySummary)}
+            {row("风险", merchant.diagnosis.riskSummary)}
+            {row("建议下一步", merchant.diagnosis.recommendedNextStep)}
+            {row(
+              "引用画像",
+              merchant.diagnosis.sourceProfileId ? "已引用当前画像" : "未引用",
+            )}
+            {row(
+              "引用基准",
+              merchant.diagnosis.sourceBaselineMetricId
+                ? "已引用当前基准"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.diagnosis.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.diagnosis.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无 TB-001 诊断。点击「创建诊断」录入最小诊断摘要（可引用当前画像 + 基准作为上游输入）。
           </p>
         )}
       </section>
