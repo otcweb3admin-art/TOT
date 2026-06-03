@@ -30,6 +30,8 @@ export function getMerchantById(id: string) {
       diagnosis: { include: { updatedBy: true } },
       // P2-005: include the 1-1 TB-002 account setup (with its updater).
       accountSetup: { include: { updatedBy: true } },
+      // P2-006: include the 1-1 TB-003 material collection (with its updater).
+      materialCollection: { include: { updatedBy: true } },
     },
   });
 }

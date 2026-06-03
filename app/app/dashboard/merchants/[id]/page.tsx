@@ -249,6 +249,62 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-003 素材采集（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/materials`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.materialCollection ? "编辑方案" : "创建方案"}
+          </Link>
+        </div>
+        {merchant.materialCollection ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.materialCollection.status)}
+            {row("素材分类", merchant.materialCollection.materialCategorySummary)}
+            {row("素材缺口", merchant.materialCollection.materialGapSummary)}
+            {row("拍摄场景", merchant.materialCollection.shootingSceneSummary)}
+            {row("人物素材", merchant.materialCollection.peopleMaterialSummary)}
+            {row(
+              "产品 / 服务素材",
+              merchant.materialCollection.productServiceMaterialSummary,
+            )}
+            {row("信任素材", merchant.materialCollection.trustMaterialSummary)}
+            {row(
+              "品牌故事素材",
+              merchant.materialCollection.brandStoryMaterialSummary,
+            )}
+            {row(
+              "采集优先级",
+              merchant.materialCollection.collectionPrioritySummary,
+            )}
+            {row("风险", merchant.materialCollection.collectionRiskSummary)}
+            {row("备注", merchant.materialCollection.notes)}
+            {row(
+              "引用 TB-002 账号搭建",
+              merchant.materialCollection.sourceAccountSetupId
+                ? "已引用当前账号搭建"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.materialCollection.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.materialCollection.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无素材采集方案。点击「创建方案」录入 TB-003 最小素材采集（可引用当前 TB-002 账号搭建作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>

@@ -78,6 +78,10 @@ model UserProfile {
   // P2-005: back-relations for MerchantAccountSetup audit FKs.
   accountSetupsCreated MerchantAccountSetup[] @relation("AccountSetupCreatedBy")
   accountSetupsUpdated MerchantAccountSetup[] @relation("AccountSetupUpdatedBy")
+
+  // P2-006: back-relations for MerchantMaterialCollection audit FKs.
+  materialCollectionsCreated MerchantMaterialCollection[] @relation("MaterialCreatedBy")
+  materialCollectionsUpdated MerchantMaterialCollection[] @relation("MaterialUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -126,6 +130,9 @@ model Merchant {
 
   // P2-005: optional 1-1 TB-002 account setup.
   accountSetup MerchantAccountSetup?
+
+  // P2-006: optional 1-1 TB-003 material collection.
+  materialCollection MerchantMaterialCollection?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -282,6 +289,49 @@ model MerchantAccountSetup {
   createdBy          UserProfile @relation("AccountSetupCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("AccountSetupUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-006 TB-003 Material Collection Foundation =====
+// MINIMAL human-written TB-003 content-material collection PLAN. This is NOT the full
+// TB-003 output set, NOT file upload, NOT a material library, NOT image/video storage,
+// NOT a material review flow, NOT AI material analysis, NOT content ops / livestream /
+// conversion, NOT MVS, NOT third-party platform APIs. 1-1 with Merchant; all summary
+// fields optional. Can REFERENCE the merchant's current TB-002 MerchantAccountSetup as
+// upstream input via a soft id pointer (sourceAccountSetupId — NOT an enforced FK).
+enum MaterialCollectionStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantMaterialCollection {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status                        MaterialCollectionStatus @default(draft)
+  materialCategorySummary       String?
+  materialGapSummary            String?
+  shootingSceneSummary          String?
+  peopleMaterialSummary         String?
+  productServiceMaterialSummary String?
+  trustMaterialSummary          String?
+  brandStoryMaterialSummary     String?
+  collectionPrioritySummary     String?
+  collectionRiskSummary         String?
+  notes                         String?
+
+  // Soft pointer to the upstream TB-002 account setup used (current id, or null).
+  sourceAccountSetupId String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("MaterialCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("MaterialUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
