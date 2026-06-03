@@ -7,7 +7,7 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现**（代码 + migration + build/lint/路由守卫均通过）。**已用 DB 权限建好测试用户 `admin@tot.local`（已确认/bcrypt/identity 齐全）、`NEXT_PUBLIC_SUPABASE_URL` 已写入 `app/.env`**；**本地登录只差 `anon key`**（JWT secret 不可经 DB 读取，须从 Supabase Settings→API 复制）。下一步：填 anon key → 验证本地登录 →（之后 P2 业务模块）。
+业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。下一步：**配 Vercel 两变量验证线上登录** →（之后 P2 业务模块）。
 
 ## 当前阶段
 - **文档/架构**：Phase 0–2 + 增长运行机制六层闭环，已相当完整。
@@ -27,19 +27,18 @@
 - **基础设施**：自动推送 hook、内置记忆、CLAUDE.md 接续入口、本交接棒。
 
 ## 进行中 / 下一步
-- **P1 收尾 — 让登录真正可用**（DB 侧已就绪，只差 anon key）：
-  1. ✅ 已建测试用户 `admin@tot.local`/`TotAdmin#2026`（DB 直建：已确认 + bcrypt + email identity；测试用，随时改/删）。
-  2. ✅ `app/.env` 已写入 `NEXT_PUBLIC_SUPABASE_URL`，并为 `NEXT_PUBLIC_SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` 留空位。
-  3. ⏳ **只差**：把 `anon key`（Supabase→Settings→API→anon public）填进 `app/.env` 空位 → 本地即可登录验证。service_role P1 未用，可暂留空。
-  4. **线上登录**：同样把 `NEXT_PUBLIC_SUPABASE_URL` + `anon key` 配到 **Vercel** Production 环境变量。
-  - 备注：因测试用户是**预确认**且走**邮箱+密码**，本地密码登录**无需**改 Supabase 后台 Site URL/Redirect/Provider（那些是 OAuth/magic-link 才需要）。
+- **P1 收尾 — 本地登录端到端已验证 ✅**（2026-06-03，浏览器实跑）：
+  1. ✅ 测试用户 `admin@tot.local`/`TotAdmin#2026`（DB 直建：已确认 + bcrypt + email identity；测试用，随时改/删）。
+  2. ✅ `app/.env` 已填 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`（新版 `sb_publishable_`）+ `SUPABASE_SERVICE_ROLE_KEY`（新版 `sb_secret_`，P1 未用）。
+  3. ✅ 实跑链路：`/login` 填表单 → `POST /login 303 ƒ login()` → `/dashboard`（显示 `admin@tot.local / operator / active`）→ 登出 `POST /dashboard 303 ƒ logout()` → `/login` → 登出后访问 `/dashboard` 被守卫弹回 `/login`。DAL 首登建档 `UserProfile{operator,active}` 生效。
+  - ⚠️ **DB 直建用户的坑**：GoTrue 把 `confirmation_token/recovery_token/email_change/...` 等列按"非空字符串"读取，手工插入留 `NULL` 会致 `500 Database error querying schema`；已 `COALESCE` 补空串、`email_change_confirm_status` 补 0 修复（详见 CLAUDE.md 决策）。
+- **下一步：线上登录**（待用户）：把 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` 配到 **Vercel → Settings → Environment Variables（Production）** 并 redeploy → `tot-dun.vercel.app/login` 同样可登。
 - **之后 P2**：第一个业务模块（按架构，建议从"商家工单 + 9 节点 + TB-001 录入"的最小切片起；仍守 AI 不拍板/人工审核）。
 
 ## 待决 / 待用户提供
-- **P1 运行所需（只差 1 项）**：`NEXT_PUBLIC_SUPABASE_ANON_KEY`（Supabase→Settings→API→anon public，可公开/可入浏览器）。填进 `app/.env` 空位即可本地登录。**未填前系统优雅降级**（`/dashboard`→`/login`，不报 500）。
-  - 测试用户已 DB 直建，**无需**再去后台 Add user；邮箱+密码、预确认，**无需**改后台 Provider/Site URL/Redirect。
-  - service_role key：P1 未用，可暂不提供；提供时**服务端专用、绝不入库/不暴露浏览器**。
-  - 线上：anon key + URL 需另配到 **Vercel** Production。
+- **P1 本地登录已验证 ✅；线上登录待用户**：把 `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` 配到 **Vercel → Environment Variables（Production）** 并 redeploy → `tot-dun.vercel.app/login` 可登。
+  - service_role key（新版 `sb_secret_`）：P1 未用，配不配均可；若配**仅服务端、绝不入库/不暴露浏览器**。
+  - 测试账号 `admin@tot.local`/`TotAdmin#2026` 为临时夹具，上线前改密码或删除。
 - **角色差异（需你定夺）**：角色枚举按 `ROLE_MODEL.md` 用 **6 个**（merchant/collector/operator/executor/admin/ai_worker）。SYSTEM_BLUEPRINT 另有 **`outsource`（第7个）**——已知文档差异（project-audit R2）。P1 **未发明、未删减**；若要纳入 outsource，后续加一个 migration 即可。
 - **P1 默认角色**：新用户首登默认 `operator`（占位；P1 不做角色强制，仅"登录与否"门禁）。生产前需做**角色分配 + 限制开放注册**。
 - **安全**：之前暴露过的 GitHub PAT / Vercel Token `vck_…` 请尽快 revoke（若未做）。
