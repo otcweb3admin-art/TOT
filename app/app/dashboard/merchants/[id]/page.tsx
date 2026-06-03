@@ -305,6 +305,58 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-004 内容运营（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/content-operation`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.contentOperation ? "编辑方案" : "创建方案"}
+          </Link>
+        </div>
+        {merchant.contentOperation ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.contentOperation.status)}
+            {row("内容定位", merchant.contentOperation.contentPositioningSummary)}
+            {row("栏目方向", merchant.contentOperation.contentPillarSummary)}
+            {row("内容比例", merchant.contentOperation.contentRatioSummary)}
+            {row(
+              "发布频率",
+              merchant.contentOperation.publishingFrequencySummary,
+            )}
+            {row("风格调性", merchant.contentOperation.toneStyleSummary)}
+            {row("内容禁区", merchant.contentOperation.contentBoundarySummary)}
+            {row(
+              "前 30 天计划",
+              merchant.contentOperation.first30DayPlanSummary,
+            )}
+            {row("内容风险", merchant.contentOperation.contentRiskSummary)}
+            {row("备注", merchant.contentOperation.notes)}
+            {row(
+              "引用 TB-003 素材采集",
+              merchant.contentOperation.sourceMaterialCollectionId
+                ? "已引用当前素材采集"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.contentOperation.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.contentOperation.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无内容运营方案。点击「创建方案」录入 TB-004 最小内容运营（可引用当前 TB-003 素材采集作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>

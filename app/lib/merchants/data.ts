@@ -32,6 +32,8 @@ export function getMerchantById(id: string) {
       accountSetup: { include: { updatedBy: true } },
       // P2-006: include the 1-1 TB-003 material collection (with its updater).
       materialCollection: { include: { updatedBy: true } },
+      // P2-007: include the 1-1 TB-004 content operation (with its updater).
+      contentOperation: { include: { updatedBy: true } },
     },
   });
 }

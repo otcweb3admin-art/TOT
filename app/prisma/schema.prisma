@@ -82,6 +82,10 @@ model UserProfile {
   // P2-006: back-relations for MerchantMaterialCollection audit FKs.
   materialCollectionsCreated MerchantMaterialCollection[] @relation("MaterialCreatedBy")
   materialCollectionsUpdated MerchantMaterialCollection[] @relation("MaterialUpdatedBy")
+
+  // P2-007: back-relations for MerchantContentOperation audit FKs.
+  contentOperationsCreated MerchantContentOperation[] @relation("ContentOperationCreatedBy")
+  contentOperationsUpdated MerchantContentOperation[] @relation("ContentOperationUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -133,6 +137,9 @@ model Merchant {
 
   // P2-006: optional 1-1 TB-003 material collection.
   materialCollection MerchantMaterialCollection?
+
+  // P2-007: optional 1-1 TB-004 content operation.
+  contentOperation MerchantContentOperation?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -332,6 +339,48 @@ model MerchantMaterialCollection {
   createdBy          UserProfile @relation("MaterialCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("MaterialUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-007 TB-004 Content Operation Foundation =====
+// MINIMAL human-written TB-004 content-operation PLAN (positioning + pillars + cadence).
+// This is NOT the full TB-004 output set, NOT content publishing, NOT a content calendar,
+// NOT script/AI copy generation, NOT image/video production, NOT a material library, NOT
+// platform APIs, NOT livestream / conversion, NOT MVS. 1-1 with Merchant; all summary
+// fields optional. Can REFERENCE the merchant's current TB-003 MerchantMaterialCollection
+// as upstream input via a soft id pointer (sourceMaterialCollectionId — NOT an enforced FK).
+enum ContentOperationStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantContentOperation {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status                     ContentOperationStatus @default(draft)
+  contentPositioningSummary  String?
+  contentPillarSummary       String?
+  contentRatioSummary        String?
+  publishingFrequencySummary String?
+  toneStyleSummary           String?
+  contentBoundarySummary     String?
+  first30DayPlanSummary      String?
+  contentRiskSummary         String?
+  notes                      String?
+
+  // Soft pointer to the upstream TB-003 material collection used (current id, or null).
+  sourceMaterialCollectionId String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("ContentOperationCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("ContentOperationUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
