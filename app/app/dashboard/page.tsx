@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth/dal";
 import { logout } from "@/lib/auth/actions";
 
@@ -35,10 +36,17 @@ export default async function DashboardPage() {
         </dl>
       </section>
 
-      <nav className="text-sm text-zinc-500">
-        <p className="mb-2">导航占位（后续阶段填充业务模块，本阶段不实现业务功能）：</p>
-        <ul className="list-disc pl-5">
-          <li>商家 / 工单（待建）</li>
+      <nav className="flex flex-col gap-3 text-sm">
+        <p className="text-zinc-500">
+          业务模块 · 当前阶段：<span className="font-medium text-zinc-700 dark:text-zinc-300">P2 Merchant Intake Foundation</span>
+        </p>
+        <Link
+          href="/dashboard/merchants"
+          className="inline-flex w-fit items-center rounded border border-zinc-300 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+        >
+          商家列表 / Merchants →
+        </Link>
+        <ul className="list-disc pl-5 text-zinc-500">
           <li>流程 / 审批（待建）</li>
           <li>数据 / 复盘（待建）</li>
         </ul>

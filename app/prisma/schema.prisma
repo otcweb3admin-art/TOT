@@ -58,4 +58,48 @@ model UserProfile {
   status     UserStatus @default(active)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
+
+  // P2-001: back-relations for Merchant FKs (merchants this profile owns / created).
+  merchantsOwned   Merchant[] @relation("MerchantOwner")
+  merchantsCreated Merchant[] @relation("MerchantCreatedBy")
+}
+
+// ===== P2-001 Merchant Intake Foundation =====
+// First business ROOT entity. MINIMAL intake fields only.
+// Deliberately EXCLUDES TB-001 / Merchant Profile Asset fields (客群画像 / 核心卖点 /
+// 增长目标 / 投流预算(P-001) / 内容策略 / 诊断评分) — those belong to later TB-001 /
+// asset phases (see merchant-asset-catalog-v1 + growth-* architecture docs).
+// Diagnostic / strategy / planning / execution / monitoring / review modules will
+// hang off this entity in later phases. NOT implemented here.
+enum MerchantStatus {
+  lead // 已接触 / 待评估
+  active // 合作中
+  paused // 暂停
+  archived // 归档
+}
+
+model Merchant {
+  id           String         @id @default(uuid())
+  name         String
+  industry     String?
+  city         String?
+  country      String?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  status       MerchantStatus @default(lead)
+
+  // Ownership / audit. Both reference UserProfile.id (NOT the Supabase auth user id).
+  ownerProfileId     String
+  owner              UserProfile @relation("MerchantOwner", fields: [ownerProfileId], references: [id])
+  createdByProfileId String
+  createdBy          UserProfile @relation("MerchantCreatedBy", fields: [createdByProfileId], references: [id])
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerProfileId])
+  @@index([createdByProfileId])
+  @@index([status])
 }

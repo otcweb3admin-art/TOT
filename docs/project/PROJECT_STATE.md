@@ -7,7 +7,7 @@
 ---
 
 ## 一句话状态
-业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。下一步：**P2 第一个业务模块**。
+业务架构已成体系（约 22 份）。**P0 地基完成并上线**（`tot-dun.vercel.app/health` → `db:connected`）。**P1 身份与角色地基已实现，且本地登录端到端验证通过**（2026-06-03 浏览器实跑 `login→dashboard→logout→守卫` 全绿；anon key 用新版 `sb_publishable_` 格式，`supabase-js`/`@supabase/ssr` 均兼容）。**线上登录亦端到端验证通过**（2026-06-03，TASK-026：线上 `/dashboard` 带 session 返回 200 并显示 email/role/status）。**P2-001 Merchant Intake Foundation 完成**（2026-06-03，TASK-027：第一个业务根实体 `Merchant` + 创建/列表/详情最小闭环，本地手工验证全绿）。下一步：P2-002。
 
 ## 当前阶段
 - **文档/架构**：Phase 0–2 + 增长运行机制六层闭环，已相当完整。
@@ -34,7 +34,13 @@
   - ⚠️ **DB 直建用户的坑**：GoTrue 把 `confirmation_token/recovery_token/email_change/...` 等列按"非空字符串"读取，手工插入留 `NULL` 会致 `500 Database error querying schema`；已 `COALESCE` 补空串、`email_change_confirm_status` 补 0 修复（详见 CLAUDE.md 决策）。
 - **TASK-025 收尾完成 ✅**（2026-06-03）：`npm run build` ✓ / `npm run lint` ✓ / 密钥审计干净（`app/.env` 未入库，仅 `.env.example` 占位；`settings.local.json`【含 Vercel token】已被 gitignore）。P1 代码 commit **`4cf8e88`**（`feat: implement p1 auth role foundation`，已推送）；里程碑 tag **`checkpoint-p1-auth-final`**（回滚还原点）。
 - **P1 Online Auth Verification completed ✅**（2026-06-03，TASK-026）：用户已配 Vercel `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY` 且已生效。验证方式（无可用浏览器 → 用 `@supabase/ssr` 同款库生成真实会话 cookie + curl 打线上）：`/health`=connected、`/login`=200、**带 session 的线上 `/dashboard`=HTTP 200** 且渲染 `admin@tot.local / operator / active / P1 Auth Foundation`、未登录 `/dashboard`→307 `/login`；logout 本地实跑通过（线上同代码）。tag `checkpoint-p1-online-verified`。
-- **下一步 P2**：第一个业务模块（按架构，建议从"商家工单 + 9 节点 + TB-001 录入"的最小切片起；仍守 AI 不拍板/人工审核）。
+- **P2-001 Merchant Intake Foundation 完成 ✅**（2026-06-03，TASK-027）：第一个业务**根实体 `Merchant`**（migration `20260603120318_p2_merchant_intake_foundation`；`MerchantStatus{lead,active,paused,archived}`；owner/createdBy → `UserProfile.id`；`@@index` on owner/createdBy/status）。
+  - 页面：`/dashboard/merchants`（列表：名称/行业/城市·国家/状态/创建时间）、`/dashboard/merchants/new`（创建表单 + Server Action `createMerchant`，内置 `requireUser()` 守卫、owner=createdBy=当前 profile、status 默认 `lead`）、`/dashboard/merchants/[id]`（详情 + TB-001/诊断/策略/计划/执行/监控/复盘 占位「未开始」）；dashboard 加商家入口 + P2 阶段提示。
+  - DAL 增 `profileId`（= `UserProfile.id`，区别于 Supabase auth id）。
+  - **边界守住**：未放 TB-001 / Profile Asset 字段（客群画像/卖点/增长目标/投流预算/诊断评分）；**列表暂不做权限过滤**（`data.ts` 注释 TODO，待权限模型）。
+  - 验证：build ✓ / lint ✓ / `prisma migrate status`（3 migrations, up to date）✓ / 本地手工：登录→列表→建商家→详情→DB 记录(count=1)→未登录 307。tag `checkpoint-p2-001-merchant-intake`。
+  - 测试数据：Supabase 现有 1 条测试商家「测试商家A (Toronto Diner)」（验证夹具，可删）。
+- **下一步 P2-002**：按架构继续（如商家档案资产 / TB-001 录入切片）；仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。

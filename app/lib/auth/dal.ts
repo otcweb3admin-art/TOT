@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export type CurrentUser = {
-  id: string;
+  id: string; // Supabase auth user id
+  profileId: string; // UserProfile.id — use for owner / createdBy FKs (NOT the auth id)
   email: string;
   role: Role;
   status: UserStatus;
@@ -41,6 +42,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   return {
     id: user.id,
+    profileId: profile.id,
     email: profile.email || user.email || "",
     role: profile.role,
     status: profile.status,
