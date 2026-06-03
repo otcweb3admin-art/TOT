@@ -40,6 +40,8 @@ export function getMerchantById(id: string) {
       leadConversion: { include: { updatedBy: true } },
       // P2-010: include the 1-1 TB-007 data review (with its updater).
       dataReview: { include: { updatedBy: true } },
+      // P2-011: include the 1-1 TB-008 90-day growth plan (with its updater).
+      ninetyDayGrowthPlan: { include: { updatedBy: true } },
     },
   });
 }

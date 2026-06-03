@@ -98,6 +98,10 @@ model UserProfile {
   // P2-010: back-relations for MerchantDataReview audit FKs.
   dataReviewsCreated MerchantDataReview[] @relation("DataReviewCreatedBy")
   dataReviewsUpdated MerchantDataReview[] @relation("DataReviewUpdatedBy")
+
+  // P2-011: back-relations for MerchantNinetyDayGrowthPlan audit FKs.
+  growthPlansCreated MerchantNinetyDayGrowthPlan[] @relation("GrowthPlanCreatedBy")
+  growthPlansUpdated MerchantNinetyDayGrowthPlan[] @relation("GrowthPlanUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -161,6 +165,9 @@ model Merchant {
 
   // P2-010: optional 1-1 TB-007 data review.
   dataReview MerchantDataReview?
+
+  // P2-011: optional 1-1 TB-008 90-day growth plan.
+  ninetyDayGrowthPlan MerchantNinetyDayGrowthPlan?
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -545,6 +552,56 @@ model MerchantDataReview {
   createdBy          UserProfile @relation("DataReviewCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("DataReviewUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== P2-011 TB-008 90-Day Growth Plan Foundation =====
+// MINIMAL human-written TB-008 90-day growth plan (summary-level direction). This is NOT
+// the full TB-008 output set, NOT a full 90-day execution system, NOT auto scheduling,
+// NOT KPI auto-computation, NOT AI plan generation, NOT MVS, NOT Experience Base / auto
+// experience candidates, NOT a task/calendar system, NOT reports/charts, NOT platform
+// APIs. 1-1 with Merchant; all summary fields optional. Can REFERENCE the merchant's
+// current baseline / TB-001 diagnosis / TB-006 lead conversion / TB-007 data review as
+// upstream inputs via soft id pointers (sourceBaselineMetricId / sourceDiagnosisId /
+// sourceLeadConversionId / sourceDataReviewId — NOT enforced FKs). GrowthPlanStage / KPI /
+// Task / Calendar / ExecutionSchedule / PlanVersion tables are later phases — NOT built.
+enum NinetyDayGrowthPlanStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+model MerchantNinetyDayGrowthPlan {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status                     NinetyDayGrowthPlanStatus @default(draft)
+  planPeriodLabel            String?
+  stageGoalSummary           String?
+  roadmapSummary             String?
+  platformPrioritySummary    String?
+  contentRouteSummary        String?
+  leadConversionRouteSummary String?
+  kpiSummary                 String?
+  riskSummary                String?
+  cycleJudgmentSummary       String?
+  nextStageDirectionSummary  String?
+  notes                      String?
+
+  // Soft pointers to upstream baseline / TB-001 diagnosis / TB-006 / TB-007 (or null).
+  sourceBaselineMetricId String?
+  sourceDiagnosisId      String?
+  sourceLeadConversionId String?
+  sourceDataReviewId     String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("GrowthPlanCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("GrowthPlanUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

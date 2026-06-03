@@ -532,6 +532,75 @@ export default async function MerchantDetailPage({
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-500">
+            TB-008 90天增长计划（最小）
+          </h2>
+          <Link
+            href={`/dashboard/merchants/${merchant.id}/growth-plan`}
+            className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+          >
+            {merchant.ninetyDayGrowthPlan ? "编辑计划" : "创建计划"}
+          </Link>
+        </div>
+        {merchant.ninetyDayGrowthPlan ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            {row("状态", merchant.ninetyDayGrowthPlan.status)}
+            {row("计划周期", merchant.ninetyDayGrowthPlan.planPeriodLabel)}
+            {row("三阶段目标", merchant.ninetyDayGrowthPlan.stageGoalSummary)}
+            {row("90 天路线图", merchant.ninetyDayGrowthPlan.roadmapSummary)}
+            {row("平台优先级", merchant.ninetyDayGrowthPlan.platformPrioritySummary)}
+            {row("内容路线", merchant.ninetyDayGrowthPlan.contentRouteSummary)}
+            {row("引流路线", merchant.ninetyDayGrowthPlan.leadConversionRouteSummary)}
+            {row("KPI 摘要", merchant.ninetyDayGrowthPlan.kpiSummary)}
+            {row("风险摘要", merchant.ninetyDayGrowthPlan.riskSummary)}
+            {row("周期判断", merchant.ninetyDayGrowthPlan.cycleJudgmentSummary)}
+            {row(
+              "下一阶段方向",
+              merchant.ninetyDayGrowthPlan.nextStageDirectionSummary,
+            )}
+            {row("备注", merchant.ninetyDayGrowthPlan.notes)}
+            {row(
+              "引用基准数据",
+              merchant.ninetyDayGrowthPlan.sourceBaselineMetricId
+                ? "已引用当前基准"
+                : "未引用",
+            )}
+            {row(
+              "引用 TB-001 诊断",
+              merchant.ninetyDayGrowthPlan.sourceDiagnosisId
+                ? "已引用当前诊断"
+                : "未引用",
+            )}
+            {row(
+              "引用 TB-006 引流转化",
+              merchant.ninetyDayGrowthPlan.sourceLeadConversionId
+                ? "已引用当前引流转化"
+                : "未引用",
+            )}
+            {row(
+              "引用 TB-007 数据复盘",
+              merchant.ninetyDayGrowthPlan.sourceDataReviewId
+                ? "已引用当前数据复盘"
+                : "未引用",
+            )}
+            {row(
+              "更新时间",
+              merchant.ninetyDayGrowthPlan.updatedAt
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+            )}
+            {row("更新人", merchant.ninetyDayGrowthPlan.updatedBy?.email)}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            暂无 90 天增长计划。点击「创建计划」录入 TB-008 最小增长计划（可引用当前基准 + TB-001 诊断 + TB-006 引流转化 + TB-007 数据复盘作为上游输入）。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="mb-3 text-sm font-medium text-zinc-500">
           后续模块（占位，本阶段不实现）
         </h2>
