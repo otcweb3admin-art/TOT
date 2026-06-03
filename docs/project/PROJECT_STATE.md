@@ -96,7 +96,12 @@
   - 新增页面 `/dashboard/merchants/[id]/workspace`（`requireUser()` + `getMerchantById(id, user)`，**复用 TASK-040 权限**，无权 404）：基础信息（名称/行业/城市·国家/状态/owner/createdBy）+ 下一步规则提示卡 + Profile→Baseline→TB-001~008 全 10 节点（名称/状态徽章/简述/更新时间/是否引用上游/进入·创建入口）。新增展示组件 `app/components/merchants/workspace-node-row.tsx`；`StatusBadge` 加 `missing` 样式（加性，不改现有渲染）。
   - 入口：详情页头部加「打开工作台」、列表页每行加「工作台」链接（不删原区块）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（13 migrations·无变更）✓ / **真实 HTTP 手工 12 项全绿**（登录→列表含工作台入口→商家A 工作台显示基础信息+全 10 节点+下一步+免责声明→空商家 10×missing 且下一步=优先补齐 Profile→节点入口 /profile·/baseline 可达→详情页含打开工作台→未登录 307→operator 访他人商家工作台 404）；测试商家已清理，acct 角色仍 operator。tag `checkpoint-p2-013-merchant-workspace`。
-- **下一步 P2-014（待用户定）**：可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience / ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 工作台增强（如节点完成度统计/筛选）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
+- **P2-014 Smoke Test & 测试数据卫生地基 完成 ✅**（2026-06-04，TASK-042）：建立**最小、可重复、低风险**的 P2 主链 smoke test + 测试数据自动清理。**不改业务逻辑/权限/schema、无 migration、无业务模型**。
+  - 新增 `app/scripts/smoke-p2.ts`（DB + helper 层；**不碰 session/cookie/token → 零密钥泄露面**）：① env 必填存在性（仅打印**键名**）② 权限 helper（`canAccessMerchant` owner/other/admin + `merchantVisibilityWhere` 对真实 DB 查询的可见/拒绝/列表）③ workspace helper（满链商家→10 节点全非 missing·firstMissing=null·"最小链路已完整"·diagnosis 上游引用=true；空商家→10×missing·firstMissing=profile·"建议优先补齐"）④ 输出 PASS/FAIL 摘要 + 非零退出码。
+  - 测试数据卫生：所有造数据带前缀 `SMOKE_TEST_`，`finally` 严格按 `name startsWith SMOKE_TEST_`（+临时 profile email 前缀）清理（失败也清）；Merchant 删除经 `onDelete:Cascade` 连带 11 资产；**绝不碰真实数据**。
+  - 工具链：新增 devDep **`tsx`**（最小 TS runner，解析 tsconfig `@/` paths，无大型/浏览器依赖）；npm script **`smoke:p2`**（`node --env-file=.env --import tsx`）；`tsconfig.exclude` 加 `scripts`（脚本由 tsx 跑、不进 next build 类型检查）。
+  - 验证：build ✓ / lint ✓ / `prisma migrate status`（13 migrations·无变更）✓ / **`npm run smoke:p2` = 17/17 PASS·cleanup CLEAN·exit 0**；跑后 DB 无 `SMOKE_TEST_` 残留；输出无密钥；每步具名→失败可定位。tag `checkpoint-p2-014-smoke-test`。（注：`npm i` 报 2 个 esbuild 相关 moderate 漏洞，属 tsx 的 dev 依赖、仅开发期，未 `audit fix --force`。）
+- **下一步 P2-015（待用户定）**：可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience / ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 工作台增强 / ⑥ smoke 扩展（HTTP 层/CI）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。
