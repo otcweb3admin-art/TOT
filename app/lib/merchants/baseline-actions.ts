@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
-import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
+import { assertMerchantNodeWriteAccess } from "@/lib/merchants/role-access";
 
 export type SaveBaselineState = { error: string } | undefined;
 
@@ -25,7 +25,7 @@ export async function saveMerchantBaselineMetric(
 ): Promise<SaveBaselineState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
 
-  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  const accessError = await assertMerchantNodeWriteAccess(user, merchantId, "baseline");
   if (accessError) {
     return { error: accessError };
   }

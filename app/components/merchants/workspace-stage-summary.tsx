@@ -3,12 +3,14 @@
 // Built from existing workspace + operating-health data; no new data, no business logic.
 
 export function WorkspaceStageSummary({
+  currentRoleLabel,
   ownerEmail,
   completedCount,
   totalCount,
   currentStageLabel,
   attentionOrganLabel,
 }: {
+  currentRoleLabel: string;
   ownerEmail?: string | null;
   completedCount: number;
   totalCount: number;
@@ -16,6 +18,7 @@ export function WorkspaceStageSummary({
   attentionOrganLabel: string;
 }) {
   const rows: { label: string; value: string }[] = [
+    { label: "当前登录角色", value: currentRoleLabel },
     { label: "当前负责人", value: ownerEmail || "—" },
     { label: "链路状态", value: `${completedCount}/${totalCount} 节点已创建` },
     { label: "当前阶段", value: currentStageLabel },

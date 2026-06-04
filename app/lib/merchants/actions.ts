@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
+import { assertMerchantCreateAccess } from "@/lib/merchants/role-access";
 
 export type CreateMerchantState = { error: string } | undefined;
 
@@ -19,6 +20,12 @@ export async function createMerchant(
   formData: FormData,
 ): Promise<CreateMerchantState> {
   const user = await requireUser(); // guard: unauthenticated -> redirect /login
+
+  // Phase B (TASK-056): merchant creation is role-guarded (admin / collector / operator).
+  const roleError = assertMerchantCreateAccess(user);
+  if (roleError) {
+    return { error: roleError };
+  }
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) {

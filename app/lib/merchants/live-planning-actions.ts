@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
-import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
+import { assertMerchantNodeWriteAccess } from "@/lib/merchants/role-access";
 
 export type SaveLivePlanningState = { error: string } | undefined;
 
@@ -26,7 +26,7 @@ export async function saveMerchantLivePlanning(
 ): Promise<SaveLivePlanningState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
 
-  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  const accessError = await assertMerchantNodeWriteAccess(user, merchantId, "live_planning");
   if (accessError) {
     return { error: accessError };
   }

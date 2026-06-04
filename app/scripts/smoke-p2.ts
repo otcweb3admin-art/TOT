@@ -19,6 +19,11 @@ import {
 import { buildMerchantWorkspace } from "@/lib/merchants/workspace";
 import { buildOperatingHealthSnapshot } from "@/lib/merchants/operating-health";
 import { getNodeRoleUI } from "@/lib/merchants/workspace-role-ui";
+import {
+  canEditMerchantNode,
+  canCreateMerchant,
+  assertMerchantNodeWriteAccess,
+} from "@/lib/merchants/role-access";
 
 const PREFIX = "SMOKE_TEST_";
 
@@ -216,6 +221,25 @@ async function run(): Promise<void> {
   check("full merchant: organization source includes 经营承接能力采集", !!orgF?.sources.includes("经营承接能力采集"));
   const ocCount = await prisma.merchantOperatingCapacity.count({ where: { merchant: { name: { startsWith: PREFIX } } } });
   check("operating capacity row created for smoke merchant", ocCount === 1, `count=${ocCount}`);
+
+  // 8) ROLE-BASED NODE WRITE GUARD (TASK-056) --------------------------------------------
+  console.log("\n[role-access helper]");
+  const ALL_NODES = ["merchant", "profile", "baseline", "operating_capacity", "diagnosis", "account_setup", "material_collection", "content_operation", "live_planning", "lead_conversion", "data_review", "growth_plan"];
+  check("admin canEdit ALL nodes", ALL_NODES.every((k) => canEditMerchantNode("admin", k)));
+  check("collector canEdit profile/baseline/operating_capacity/material_collection", ["profile", "baseline", "operating_capacity", "material_collection"].every((k) => canEditMerchantNode("collector", k)));
+  check("collector CANNOT edit lead_conversion/data_review/growth_plan", ["lead_conversion", "data_review", "growth_plan"].every((k) => !canEditMerchantNode("collector", k)));
+  check("executor canEdit account_setup/content_operation/live_planning/lead_conversion", ["account_setup", "content_operation", "live_planning", "lead_conversion"].every((k) => canEditMerchantNode("executor", k)));
+  check("executor CANNOT edit baseline/diagnosis/growth_plan", ["baseline", "diagnosis", "growth_plan"].every((k) => !canEditMerchantNode("executor", k)));
+  check("operator canEdit diagnosis/data_review/growth_plan", ["diagnosis", "data_review", "growth_plan"].every((k) => canEditMerchantNode("operator", k)));
+  check("ai_worker canEdit NO node", ALL_NODES.every((k) => !canEditMerchantNode("ai_worker", k)));
+  check("merchant canEdit NO internal node", ALL_NODES.every((k) => !canEditMerchantNode("merchant", k)));
+  const ownerAdmin = { profileId: owner.id, role: "admin" };
+  const ownerCollector = { profileId: owner.id, role: "collector" };
+  const otherOperator = { profileId: other.id, role: "operator" };
+  check("owner+admin may write growth_plan (null)", (await assertMerchantNodeWriteAccess(ownerAdmin, full.id, "growth_plan")) === null);
+  check("owner+collector blocked on lead_conversion (node-level)", (await assertMerchantNodeWriteAccess(ownerCollector, full.id, "lead_conversion")) !== null);
+  check("non-owner operator blocked even on editable diagnosis (merchant-level wins)", (await assertMerchantNodeWriteAccess(otherOperator, full.id, "diagnosis")) !== null);
+  check("create-merchant: collector/operator allowed, ai_worker/merchant blocked", canCreateMerchant("collector") && canCreateMerchant("operator") && !canCreateMerchant("ai_worker") && !canCreateMerchant("merchant"));
 }
 
 async function main(): Promise<void> {

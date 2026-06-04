@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
-import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
+import { assertMerchantNodeWriteAccess } from "@/lib/merchants/role-access";
 
 export type SaveGrowthPlanState = { error: string } | undefined;
 
@@ -27,7 +27,7 @@ export async function saveMerchantNinetyDayGrowthPlan(
 ): Promise<SaveGrowthPlanState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
 
-  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  const accessError = await assertMerchantNodeWriteAccess(user, merchantId, "growth_plan");
   if (accessError) {
     return { error: accessError };
   }

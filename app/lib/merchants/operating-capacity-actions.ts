@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { OperatingCapacityStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
-import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
+import { assertMerchantNodeWriteAccess } from "@/lib/merchants/role-access";
 
 export type SaveOperatingCapacityState = { error: string } | undefined;
 
@@ -26,7 +26,7 @@ export async function saveMerchantOperatingCapacity(
 ): Promise<SaveOperatingCapacityState> {
   const user = await requireUser(); // guard: unauthenticated -> /login
 
-  const accessError = await assertMerchantWriteAccess(user, merchantId);
+  const accessError = await assertMerchantNodeWriteAccess(user, merchantId, "operating_capacity");
   if (accessError) {
     return { error: accessError };
   }

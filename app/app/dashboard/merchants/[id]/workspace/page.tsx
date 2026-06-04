@@ -11,6 +11,7 @@ import { formatDateTime } from "@/components/merchants/format";
 import { WorkspaceNodeRow } from "@/components/merchants/workspace-node-row";
 import { OperatingHealthSummary } from "@/components/merchants/operating-health-summary";
 import { WorkspaceStageSummary } from "@/components/merchants/workspace-stage-summary";
+import { roleLabel } from "@/lib/merchants/role-access";
 import {
   isDemoMerchant,
   DemoDataBadge,
@@ -74,6 +75,7 @@ export default async function MerchantWorkspacePage({
 
       {/* 阶段摘要（Phase A · 运营协同只读提示） */}
       <WorkspaceStageSummary
+        currentRoleLabel={roleLabel(user.role)}
         ownerEmail={merchant.owner?.email}
         completedCount={ws.completedCount}
         totalCount={ws.totalCount}
@@ -140,7 +142,7 @@ export default async function MerchantWorkspacePage({
         </p>
         <ul className="flex flex-col">
           {ws.nodes.map((node) => (
-            <WorkspaceNodeRow key={node.key} node={node} />
+            <WorkspaceNodeRow key={node.key} node={node} role={user.role} />
           ))}
         </ul>
       </section>
