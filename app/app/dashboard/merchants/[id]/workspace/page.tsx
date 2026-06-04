@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import { buildMerchantWorkspace } from "@/lib/merchants/workspace";
 import { buildOperatingHealthSnapshot } from "@/lib/merchants/operating-health";
@@ -54,6 +55,15 @@ export default async function MerchantWorkspacePage({
           </Link>
         </div>
       </header>
+
+      <IntakeGuidanceBox
+        title="工作台使用说明（试点护栏）"
+        items={[
+          "工作台用于查看链路状态与经营健康缺口；『下一步』是规则提示，不是系统决策。",
+          "真实商家试点请按《Pilot Intake Playbook V1》执行（docs/project/pilot-merchant-intake-playbook-v1.md）。",
+          "当前为 Conditional Go（见 Pilot Readiness Gate V1）：未授权放量 / 投流 / MVS，由人决策。",
+        ]}
+      />
 
       {/* 基础信息 */}
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">

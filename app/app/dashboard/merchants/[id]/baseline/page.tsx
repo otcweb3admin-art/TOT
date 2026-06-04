@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import { BaselineForm, type BaselineDefaults } from "./baseline-form";
 
@@ -55,6 +56,15 @@ export default async function EditBaselinePage({
         </Link>
       </header>
 
+      <IntakeGuidanceBox
+        tone="warning"
+        title="基线纪律（数据可信度）"
+        items={[
+          "没有基线，就无法证明增长——尽量采到真实数字。",
+          "口述 / 估计可以记录，但数据可信度应标 low / medium，并在『数据来源』写清出处。",
+          "不要把低可信数据写成确定事实。",
+        ]}
+      />
       <BaselineForm merchantId={merchant.id} defaults={defaults} />
     </main>
   );

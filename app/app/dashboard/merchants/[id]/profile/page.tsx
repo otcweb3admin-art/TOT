@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import { MerchantProfileForm } from "./profile-form";
 
@@ -35,6 +36,15 @@ export default async function EditMerchantProfilePage({
         </Link>
       </header>
 
+      <IntakeGuidanceBox
+        tone="evidence"
+        title="录入纪律（先事实，后判断）"
+        items={[
+          "先记录事实，再谈判断；卖点 / 客群 / 线上情况要区分『事实』与『假设』。",
+          "Offer 要能让客户快速（约 3 秒）理解卖什么、好在哪。",
+          "不知道就写『待补充』，不要编。",
+        ]}
+      />
       <MerchantProfileForm merchantId={merchant.id} profile={merchant.profile} />
     </main>
   );

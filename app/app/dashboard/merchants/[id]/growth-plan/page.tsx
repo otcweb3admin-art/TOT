@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import { GrowthPlanForm } from "./growth-plan-form";
 
@@ -129,6 +130,15 @@ export default async function GrowthPlanPage({
         )}
       </section>
 
+      <IntakeGuidanceBox
+        tone="warning"
+        title="计划前提"
+        items={[
+          "90 天计划应承接复盘 / 诊断 / 引流转化的真实依据。",
+          "没有真实复盘依据时，只用 draft 记录初步方向。",
+          "不要为了链路完整制造假计划。",
+        ]}
+      />
       <GrowthPlanForm merchantId={merchant.id} defaults={defaults} />
     </main>
   );

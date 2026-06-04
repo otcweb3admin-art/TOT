@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import { DataReviewForm } from "./data-review-form";
 
@@ -131,6 +132,15 @@ export default async function DataReviewPage({
         )}
       </section>
 
+      <IntakeGuidanceBox
+        tone="warning"
+        title="复盘前提"
+        items={[
+          "数据复盘需要真实执行与结果——没有真实结果时不要强行 completed。",
+          "复盘结论只是『经验候选』，不是经验（须多案例验证后由人审定）。",
+          "无依据的复盘会污染后续 MVS 与经验沉淀。",
+        ]}
+      />
       <DataReviewForm merchantId={merchant.id} defaults={defaults} />
     </main>
   );

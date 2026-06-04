@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import { DiagnosisForm } from "./diagnosis-form";
 
@@ -106,6 +107,15 @@ export default async function DiagnosisPage({
         )}
       </section>
 
+      <IntakeGuidanceBox
+        tone="evidence"
+        title="诊断纪律"
+        items={[
+          "诊断不是『建议合集』，而是根因判断。",
+          "诊断要基于 Profile / Baseline / Operating Capacity 与访谈事实。",
+          "缺证据时只能写『待验证』，不要写确定结论。",
+        ]}
+      />
       <DiagnosisForm merchantId={merchant.id} defaults={defaults} />
     </main>
   );

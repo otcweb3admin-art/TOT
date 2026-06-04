@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { IntakeGuidanceBox } from "@/components/merchants/intake-guidance-box";
 import { getMerchantById } from "@/lib/merchants/data";
 import {
   OperatingCapacityForm,
@@ -70,6 +71,15 @@ export default async function EditOperatingCapacityPage({
         本页用于采集商家履约与组织承接能力，不代表系统自动决策。所有字段可选，仅作经营事实记录（非评分、非 AI、非完整履约/组织系统）。
       </p>
 
+      <IntakeGuidanceBox
+        tone="warning"
+        title="为什么这一步重要"
+        items={[
+          "履约与组织决定商家『能不能承接增长』——这一步缺口未补前，不建议急着引流。",
+          "老板是否单点故障要如实记录（组织风险）。",
+          "无专项数据的格子保持空白即可，不要编造承接能力。",
+        ]}
+      />
       <OperatingCapacityForm merchantId={merchant.id} defaults={defaults} />
     </main>
   );
