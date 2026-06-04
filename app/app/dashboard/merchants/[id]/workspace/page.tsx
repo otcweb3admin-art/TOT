@@ -10,6 +10,7 @@ import { AssetSummaryGrid } from "@/components/merchants/asset-summary-grid";
 import { formatDateTime } from "@/components/merchants/format";
 import { WorkspaceNodeRow } from "@/components/merchants/workspace-node-row";
 import { OperatingHealthSummary } from "@/components/merchants/operating-health-summary";
+import { WorkspaceStageSummary } from "@/components/merchants/workspace-stage-summary";
 import {
   isDemoMerchant,
   DemoDataBadge,
@@ -69,6 +70,21 @@ export default async function MerchantWorkspacePage({
           "真实商家试点请按《Pilot Intake Playbook V1》执行（docs/project/pilot-merchant-intake-playbook-v1.md）。",
           "当前为 Conditional Go（见 Pilot Readiness Gate V1）：未授权放量 / 投流 / MVS，由人决策。",
         ]}
+      />
+
+      {/* 阶段摘要（Phase A · 运营协同只读提示） */}
+      <WorkspaceStageSummary
+        ownerEmail={merchant.owner?.email}
+        completedCount={ws.completedCount}
+        totalCount={ws.totalCount}
+        currentStageLabel={
+          ws.firstMissing ? `待创建：${ws.firstMissing.label}` : "最小链路已完整"
+        }
+        attentionOrganLabel={
+          ohs.firstAttentionOrgan
+            ? ohs.firstAttentionOrgan.label
+            : "暂无 attention 器官"
+        }
       />
 
       {/* 基础信息 */}

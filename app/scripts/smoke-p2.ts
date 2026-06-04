@@ -18,6 +18,7 @@ import {
 } from "@/lib/merchants/permissions";
 import { buildMerchantWorkspace } from "@/lib/merchants/workspace";
 import { buildOperatingHealthSnapshot } from "@/lib/merchants/operating-health";
+import { getNodeRoleUI } from "@/lib/merchants/workspace-role-ui";
 
 const PREFIX = "SMOKE_TEST_";
 
@@ -181,6 +182,7 @@ async function run(): Promise<void> {
   check("full merchant: next-step = chain complete", wsFull.nextStep.title === "最小链路已完整");
   const diagNode = wsFull.nodes.find((n) => n.key === "diagnosis");
   check("full merchant: diagnosis node marks upstream referenced", diagNode?.upstreamReferenced === true);
+  check("role-ui: every workspace node has UI meta (Phase A)", wsFull.nodes.every((n) => getNodeRoleUI(n.key) !== null));
 
   const wsEmpty = buildMerchantWorkspace(emptyM);
   check("empty merchant: all 10 nodes missing", wsEmpty.nodes.every((n) => n.status === "missing"));
