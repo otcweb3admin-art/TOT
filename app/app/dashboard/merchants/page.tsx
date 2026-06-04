@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/dal";
 import { listMerchants } from "@/lib/merchants/data";
+import {
+  isDemoMerchant,
+  DemoDataBadge,
+} from "@/components/merchants/demo-data-badge";
 
 // Reads session + DB at request time; never prerender at build.
 export const dynamic = "force-dynamic";
@@ -63,6 +67,11 @@ export default async function MerchantsPage() {
                   >
                     {m.name}
                   </Link>
+                  {isDemoMerchant(m.name) && (
+                    <span className="ml-2">
+                      <DemoDataBadge variant="compact" />
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 pr-4">{m.industry ?? "—"}</td>
                 <td className="py-2 pr-4">

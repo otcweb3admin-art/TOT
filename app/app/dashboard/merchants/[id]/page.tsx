@@ -9,6 +9,10 @@ import {
 } from "@/components/merchants/asset-summary-grid";
 import { MerchantAssetSection } from "@/components/merchants/merchant-asset-section";
 import { formatDateTime, referenceLabel } from "@/components/merchants/format";
+import {
+  isDemoMerchant,
+  DemoDataBadge,
+} from "@/components/merchants/demo-data-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -287,6 +291,8 @@ export default async function MerchantDetailPage({
           </Link>
         </div>
       </header>
+
+      {isDemoMerchant(merchant.name) && <DemoDataBadge />}
 
       {/* 基础信息 — always present (no create/edit link), so a plain section. */}
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">

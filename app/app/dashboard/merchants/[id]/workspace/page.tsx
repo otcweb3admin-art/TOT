@@ -10,6 +10,10 @@ import { AssetSummaryGrid } from "@/components/merchants/asset-summary-grid";
 import { formatDateTime } from "@/components/merchants/format";
 import { WorkspaceNodeRow } from "@/components/merchants/workspace-node-row";
 import { OperatingHealthSummary } from "@/components/merchants/operating-health-summary";
+import {
+  isDemoMerchant,
+  DemoDataBadge,
+} from "@/components/merchants/demo-data-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +59,8 @@ export default async function MerchantWorkspacePage({
           </Link>
         </div>
       </header>
+
+      {isDemoMerchant(merchant.name) && <DemoDataBadge />}
 
       <IntakeGuidanceBox
         title="工作台使用说明（试点护栏）"

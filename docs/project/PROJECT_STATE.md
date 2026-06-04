@@ -124,7 +124,11 @@
   - DEMO 数据：商家名 `DEMO_小吃车增长样例`、每字段含演示文案、**每 notes 写明"演示数据，不得用于 MVS/经验库/ROI/归因/真实案例"**；围绕小吃车五器官（履约高峰压力 + 老板单点→工作台显 attention）；TB-007/008 标 draft「演示复盘/方向·非真实结果」；全 11 资产逐级软引用。
   - 清理严格 `name startsWith "DEMO_"`（资产 cascade），**不碰真实 / SMOKE_TEST_ 数据**；seed 幂等（先清后建，可恢复）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（14·无变更）✓ / **`smoke:p2` 30/30 PASS（DEMO 存在时仍独立通过，cleanup 只动 SMOKE_TEST_）** / seed → 11/11 资产 / clean → 只删 DEMO（商家A 保留）/ 再 seed 恢复；**真实 HTTP 手工**：列表见 DEMO、工作台全 10 节点 + 五器官 signal/attention + 履约/组织读「经营承接能力采集」+ 链路完整 + DEMO 标记可见、节点入口可达。**末态保留 DEMO 数据**（供演示）。tag `checkpoint-p2-018-demo-seed`。
-- **下一步 P2-019（待用户定）**：审计/门禁推荐序——**⑦ 按 Playbook + 访谈清单跑首个真实商家试点（人工授权后，Conditional Go 条件下）** 最具价值；其余可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience（放量/收费前）/ ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 经营承接能力深化（履约/组织 risk 在工作台高亮、纳入诊断维度）/ ⑥ smoke 扩展（HTTP 层/CI）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
+- **P2-019 Demo Data Safety Badge 完成 ✅**（2026-06-04，TASK-051）：给 DEMO 数据加 **UI 安全护栏**，防止内部人员误把演示数据当真实商家/案例。**纯 UI，无 schema/migration/模型/权限/业务行为变更。**
+  - 新增 `app/components/merchants/demo-data-badge.tsx`：`isDemoMerchant(name)`（**仅按 `name startsWith "DEMO_"`，只用于展示、不用于权限/查询**）+ `DemoDataBadge`（compact 列表用小徽章「DEMO 数据」/ full 详情·工作台用完整提示「这是 DEMO 演示数据…不得用于 MVS/ROI/归因/经验库/真实案例」）。
+  - 接入：列表页商家名旁 compact 徽章；详情页、工作台页顶部 full 提示（均**仅 DEMO 显示**，非 DEMO 不显）。
+  - 验证：build ✓ / lint ✓ / `prisma migrate status`（14·无变更）✓ / **`smoke:p2` 30/30 PASS**（纯 UI 未影响）；**真实 HTTP 手工**：列表恰 1 枚可见 DEMO 徽章（第 2 次「DEMO 数据」为 RSC flight 回显）、DEMO 详情/工作台显完整提示、商家A 不显、五器官/链路/节点入口不受影响、未登录 307、权限不变。tag `checkpoint-p2-019-demo-badge`。
+- **下一步 P2-020（待用户定）**：审计/门禁推荐序——**⑦ 按 Playbook + 访谈清单跑首个真实商家试点（人工授权后，Conditional Go 条件下）** 最具价值；其余可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience（放量/收费前）/ ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 经营承接能力深化（履约/组织 risk 在工作台高亮、纳入诊断维度）/ ⑥ smoke 扩展（HTTP 层/CI）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。
