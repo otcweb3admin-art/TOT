@@ -128,7 +128,8 @@
   - 新增 `app/components/merchants/demo-data-badge.tsx`：`isDemoMerchant(name)`（**仅按 `name startsWith "DEMO_"`，只用于展示、不用于权限/查询**）+ `DemoDataBadge`（compact 列表用小徽章「DEMO 数据」/ full 详情·工作台用完整提示「这是 DEMO 演示数据…不得用于 MVS/ROI/归因/经验库/真实案例」）。
   - 接入：列表页商家名旁 compact 徽章；详情页、工作台页顶部 full 提示（均**仅 DEMO 显示**，非 DEMO 不显）。
   - 验证：build ✓ / lint ✓ / `prisma migrate status`（14·无变更）✓ / **`smoke:p2` 30/30 PASS**（纯 UI 未影响）；**真实 HTTP 手工**：列表恰 1 枚可见 DEMO 徽章（第 2 次「DEMO 数据」为 RSC flight 回显）、DEMO 详情/工作台显完整提示、商家A 不显、五器官/链路/节点入口不受影响、未登录 307、权限不变。tag `checkpoint-p2-019-demo-badge`。
-- **下一步 P2-020（待用户定）**：审计/门禁推荐序——**⑦ 按 Playbook + 访谈清单跑首个真实商家试点（人工授权后，Conditional Go 条件下）** 最具价值；其余可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience（放量/收费前）/ ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 经营承接能力深化（履约/组织 risk 在工作台高亮、纳入诊断维度）/ ⑥ smoke 扩展（HTTP 层/CI）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
+- **文档（现场工具包·无代码）：首批真实商家现场访谈与录入采集包 V1 完成 ✅**（2026-06-04，TASK-052）：新增 [`docs/project/pilot-intake-field-pack-v1.md`](./pilot-intake-field-pack-v1.md)——把 Playbook/访谈清单/证据纪律整理成**可打印/可勾选/可填写**的 15 节现场采集包（访谈前确认→基础信息→Profile/Baseline 快采→五器官采集→Operating Capacity→TB-001~006 最少问题→证据来源/红旗/不应引流勾选→系统录入顺序→访谈后复盘→撕下三句提醒）。每字段带 填写留白 + 证据来源栏 + ☐待补充 + 「→ 录入:对应系统页面」。**纯文档，未改代码/schema/数据库。** tag `checkpoint-pilot-field-pack-v1`。
+- **下一步 P2-020（待用户定）**：审计/门禁推荐序——**⑦ 按 Playbook + 访谈清单 + 现场采集包跑首个真实商家试点（人工授权后，Conditional Go 条件下）** 最具价值；其余可选 ① 角色按需细分（collector/executor/… 差异化可见·可写，或第 7 角色 `outsource` 定夺）② 某 TB 深化 / ③ MVS·Metric·Experience（放量/收费前）/ ④ action-helper 轻量重构（审计 #5，第二轮）/ ⑤ 经营承接能力深化（履约/组织 risk 在工作台高亮、纳入诊断维度）/ ⑥ smoke 扩展（HTTP 层/CI）。注：`admin@tot.local` 现仍为 `operator` 角色（仅见自有商家）；若需全见，需人工将其置为 `admin`（角色=业务决策，AI 不拍板）。仍守 AI 不拍板 / 人工审核。
 
 ## 待决 / 待用户提供
 - **P1 登录本地 + 线上均已验证 ✅**（TASK-025/026）。Vercel 已配 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`（service_role 未用、未配）。
