@@ -39,6 +39,11 @@ export function getMerchantById(id: string, user: CurrentUser) {
       ninetyDayGrowthPlan: { include: { updatedBy: true } },
       // P2-016: operating capacity (Fulfillment + Organization intake).
       operatingCapacity: { include: { updatedBy: true } },
+      // P2-022: stage handoff records (Phase C), newest first.
+      stageHandoffs: {
+        include: { submittedBy: true, receivedBy: true, reviewedBy: true },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 }

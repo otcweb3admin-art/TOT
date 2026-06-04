@@ -23,6 +23,9 @@ import {
   canEditMerchantNode,
   canCreateMerchant,
   assertMerchantNodeWriteAccess,
+  canSubmitHandoffFrom,
+  canReceiveHandoff,
+  canCancelHandoff,
 } from "@/lib/merchants/role-access";
 
 const PREFIX = "SMOKE_TEST_";
@@ -50,9 +53,13 @@ async function cleanup(): Promise<void> {
     const remain = await prisma.merchant.count({
       where: { name: { startsWith: PREFIX } },
     });
-    cleanupOk = remain === 0;
+    // P2-022: handoffs cascade with their merchant — confirm no residue.
+    const handoffResidue = await prisma.merchantStageHandoff.count({
+      where: { merchant: { name: { startsWith: PREFIX } } },
+    });
+    cleanupOk = remain === 0 && handoffResidue === 0;
     console.log(
-      `\n[cleanup] deleted merchants=${delM.count} temp-profiles=${delP.count}; remaining ${PREFIX} merchants=${remain} -> ${cleanupOk ? "CLEAN" : "DIRTY"}`,
+      `\n[cleanup] deleted merchants=${delM.count} temp-profiles=${delP.count}; remaining ${PREFIX} merchants=${remain} handoffs=${handoffResidue} -> ${cleanupOk ? "CLEAN" : "DIRTY"}`,
     );
   } catch (e) {
     console.error("[cleanup] error:", e instanceof Error ? e.message : e);
@@ -240,6 +247,21 @@ async function run(): Promise<void> {
   check("owner+collector blocked on lead_conversion (node-level)", (await assertMerchantNodeWriteAccess(ownerCollector, full.id, "lead_conversion")) !== null);
   check("non-owner operator blocked even on editable diagnosis (merchant-level wins)", (await assertMerchantNodeWriteAccess(otherOperator, full.id, "diagnosis")) !== null);
   check("create-merchant: collector/operator allowed, ai_worker/merchant blocked", canCreateMerchant("collector") && canCreateMerchant("operator") && !canCreateMerchant("ai_worker") && !canCreateMerchant("merchant"));
+
+  // 9) STAGE HANDOFF (TASK-057, Phase C) -------------------------------------------------
+  console.log("\n[stage handoff]");
+  const handoff = await prisma.merchantStageHandoff.create({
+    data: { merchantId: full.id, fromNode: "diagnosis", toNode: "account_setup", receivedByRole: "executor", status: "submitted", summary: "smoke handoff", submittedByProfileId: owner.id },
+  });
+  const hCount = await prisma.merchantStageHandoff.count({ where: { merchant: { name: { startsWith: PREFIX } } } });
+  check("handoff created (status submitted)", hCount === 1 && handoff.status === "submitted", `count=${hCount}`);
+  check("submit: operator from diagnosis allowed; collector from diagnosis blocked", canSubmitHandoffFrom("operator", "diagnosis") && !canSubmitHandoffFrom("collector", "diagnosis"));
+  check("submit: ai_worker / merchant cannot submit", !canSubmitHandoffFrom("ai_worker", "diagnosis") && !canSubmitHandoffFrom("merchant", "diagnosis"));
+  check("receive: executor (target) and admin can; operator (non-target) cannot", canReceiveHandoff("executor", "executor") && canReceiveHandoff("admin", "executor") && !canReceiveHandoff("operator", "executor"));
+  check("cancel: submitter and admin can; other non-submitter cannot", canCancelHandoff({ profileId: owner.id, role: "operator" }, owner.id) && canCancelHandoff({ profileId: other.id, role: "admin" }, owner.id) && !canCancelHandoff({ profileId: other.id, role: "operator" }, owner.id));
+  // transition works at the DB layer (received)
+  const recv = await prisma.merchantStageHandoff.update({ where: { id: handoff.id }, data: { status: "received", receivedByProfileId: other.id, receivedAt: new Date() } });
+  check("handoff DB transition submitted -> received", recv.status === "received" && recv.receivedByProfileId === other.id);
 }
 
 async function main(): Promise<void> {

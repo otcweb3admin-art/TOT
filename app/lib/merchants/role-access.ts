@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Role, MerchantStageNode } from "@prisma/client";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
 
@@ -130,4 +130,27 @@ const WS_TO_NODE: Record<string, MerchantNodeKey> = {
 
 export function nodeKeyForWorkspace(wsKey: string): MerchantNodeKey | null {
   return WS_TO_NODE[wsKey] ?? null;
+}
+
+// ===== Stage Handoff permissions (Phase C / TASK-057) — record-only, no auto-approval. =====
+
+/** Whether `role` may SUBMIT a handoff FROM `fromNode`. ai_worker/merchant never; workspace
+ *  is a coordination node (operator/admin); other nodes require node edit permission. */
+export function canSubmitHandoffFrom(role: Role, fromNode: MerchantStageNode): boolean {
+  if (role === "ai_worker" || role === "merchant") return false;
+  if (fromNode === "workspace") return role === "operator" || role === "admin";
+  return canEditMerchantNode(role, fromNode as MerchantNodeKey);
+}
+
+/** Whether `role` may RECEIVE a handoff targeted at `receivedByRole` (target role or admin). */
+export function canReceiveHandoff(role: Role, receivedByRole: Role): boolean {
+  return role === "admin" || role === receivedByRole;
+}
+
+/** Whether the user may CANCEL a submitted handoff (its submitter or admin). */
+export function canCancelHandoff(
+  user: { profileId: string; role: Role },
+  submittedByProfileId: string,
+): boolean {
+  return user.role === "admin" || user.profileId === submittedByProfileId;
 }

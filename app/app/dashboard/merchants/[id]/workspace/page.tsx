@@ -12,6 +12,7 @@ import { WorkspaceNodeRow } from "@/components/merchants/workspace-node-row";
 import { OperatingHealthSummary } from "@/components/merchants/operating-health-summary";
 import { WorkspaceStageSummary } from "@/components/merchants/workspace-stage-summary";
 import { roleLabel } from "@/lib/merchants/role-access";
+import { HandoffSection } from "@/components/merchants/handoff-section";
 import {
   isDemoMerchant,
   DemoDataBadge,
@@ -146,6 +147,14 @@ export default async function MerchantWorkspacePage({
           ))}
         </ul>
       </section>
+
+      {/* 环节交接记录（Phase C · 人工记录，不自动审批/流转） */}
+      <HandoffSection
+        merchantId={merchant.id}
+        handoffs={merchant.stageHandoffs}
+        currentProfileId={user.profileId}
+        currentRole={user.role}
+      />
     </main>
   );
 }

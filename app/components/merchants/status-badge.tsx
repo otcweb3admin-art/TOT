@@ -9,6 +9,11 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
   attention: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
   unknown: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  // P2-022: stage-handoff statuses (record-only; not approval/transition).
+  submitted: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  received:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  cancelled: "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300",
   draft: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
   completed:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
