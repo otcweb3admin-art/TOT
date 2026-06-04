@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "smoke:p2": "node --env-file=.env --import tsx ./scripts/smoke-p2.ts",
+    "seed:demo": "node --env-file=.env --import tsx ./scripts/seed-demo-merchant.ts",
+    "seed:demo:clean": "node --env-file=.env --import tsx ./scripts/seed-demo-merchant.ts --clean",
     "postinstall": "prisma generate"
   },
   "dependencies": {
