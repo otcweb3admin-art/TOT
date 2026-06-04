@@ -121,6 +121,17 @@ async function run(): Promise<void> {
   });
   await prisma.merchantDataReview.create({ data: { merchantId: full.id, status: "completed", ...audit } });
   await prisma.merchantNinetyDayGrowthPlan.create({ data: { merchantId: full.id, status: "completed", ...audit } });
+  // P2-016 operating capacity: fulfillment capacity (signal) + organization capacity + risk (attention).
+  await prisma.merchantOperatingCapacity.create({
+    data: {
+      merchantId: full.id,
+      status: "completed",
+      responseProcessSummary: "smoke fulfillment capacity",
+      ownerDependencySummary: "smoke org capacity",
+      organizationRiskSummary: "smoke org risk",
+      ...audit,
+    },
+  });
 
   // 3) an EMPTY smoke merchant (no assets) for the first-missing case.
   const empty = await prisma.merchant.create({
@@ -140,6 +151,7 @@ async function run(): Promise<void> {
     leadConversion: true,
     dataReview: true,
     ninetyDayGrowthPlan: true,
+    operatingCapacity: true,
   } as const;
 
   // 4) PERMISSION helper (TASK-040) ------------------------------------------------------
@@ -189,7 +201,19 @@ async function run(): Promise<void> {
   const orgE = ohEmpty.organs.find((o) => o.key === "organization");
   check("empty merchant: fulfillment = unknown + weakSignalOnly", ffE?.status === "unknown" && ffE?.weakSignalOnly === true, `status=${ffE?.status}`);
   check("empty merchant: organization = unknown + weakSignalOnly", orgE?.status === "unknown" && orgE?.weakSignalOnly === true, `status=${orgE?.status}`);
-  check("full merchant: fulfillment/organization stay weak-signal (not faked healthy)", ohFull.organs.filter((o) => o.weakSignalOnly).length === 2);
+  // empty merchant: Fulfillment/Organization have no dedicated data -> weak-signal (never faked healthy)
+  check("empty merchant: fulfillment/organization are weak-signal (not faked healthy)", [ffE, orgE].every((o) => o?.weakSignalOnly === true));
+
+  // 7) OPERATING CAPACITY intake (TASK-045) ----------------------------------------------
+  console.log("\n[operating capacity intake -> health]");
+  const ffF = ohFull.organs.find((o) => o.key === "fulfillment");
+  const orgF = ohFull.organs.find((o) => o.key === "organization");
+  check("full merchant: fulfillment reads capacity asset (signal, not weak)", ffF?.status === "signal" && ffF?.weakSignalOnly === false, `status=${ffF?.status} weak=${ffF?.weakSignalOnly}`);
+  check("full merchant: fulfillment source includes 经营承接能力采集", !!ffF?.sources.includes("经营承接能力采集"));
+  check("full merchant: organization w/ risk -> attention (not weak)", orgF?.status === "attention" && orgF?.weakSignalOnly === false, `status=${orgF?.status} weak=${orgF?.weakSignalOnly}`);
+  check("full merchant: organization source includes 经营承接能力采集", !!orgF?.sources.includes("经营承接能力采集"));
+  const ocCount = await prisma.merchantOperatingCapacity.count({ where: { merchant: { name: { startsWith: PREFIX } } } });
+  check("operating capacity row created for smoke merchant", ocCount === 1, `count=${ocCount}`);
 }
 
 async function main(): Promise<void> {

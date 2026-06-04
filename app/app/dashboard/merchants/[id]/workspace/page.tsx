@@ -92,7 +92,11 @@ export default async function MerchantWorkspacePage({
       </section>
 
       {/* 经营健康摘要（五器官，只读规则映射） */}
-      <OperatingHealthSummary snapshot={ohs} />
+      <OperatingHealthSummary
+        snapshot={ohs}
+        capacityHref={`${base}/operating-capacity`}
+        capacityExists={!!merchant.operatingCapacity}
+      />
 
       {/* 节点链路总览 */}
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">

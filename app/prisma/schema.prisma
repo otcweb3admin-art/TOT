@@ -102,6 +102,10 @@ model UserProfile {
   // P2-011: back-relations for MerchantNinetyDayGrowthPlan audit FKs.
   growthPlansCreated MerchantNinetyDayGrowthPlan[] @relation("GrowthPlanCreatedBy")
   growthPlansUpdated MerchantNinetyDayGrowthPlan[] @relation("GrowthPlanUpdatedBy")
+
+  // P2-016: back-relations for MerchantOperatingCapacity audit FKs.
+  operatingCapacitiesCreated MerchantOperatingCapacity[] @relation("OperatingCapacityCreatedBy")
+  operatingCapacitiesUpdated MerchantOperatingCapacity[] @relation("OperatingCapacityUpdatedBy")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -169,6 +173,9 @@ model Merchant {
   // P2-011: optional 1-1 TB-008 90-day growth plan.
   ninetyDayGrowthPlan MerchantNinetyDayGrowthPlan?
 
+  // P2-016: optional 1-1 operating capacity (Fulfillment + Organization intake).
+  operatingCapacity MerchantOperatingCapacity?
+
   @@index([ownerProfileId])
   @@index([createdByProfileId])
   @@index([status])
@@ -224,15 +231,15 @@ model MerchantBaselineMetric {
   merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   periodLabel            String?
-  monthlyRevenue         Decimal? @db.Decimal(14, 2)
+  monthlyRevenue         Decimal?               @db.Decimal(14, 2)
   monthlyCustomerCount   Int?
   monthlyLeadCount       Int?
   monthlyConversionCount Int?
-  averageOrderValue      Decimal? @db.Decimal(12, 2)
-  repeatCustomerRate     Decimal? @db.Decimal(5, 2)
+  averageOrderValue      Decimal?               @db.Decimal(12, 2)
+  repeatCustomerRate     Decimal?               @db.Decimal(5, 2)
   followerCount          Int?
   reviewCount            Int?
-  averageRating          Decimal? @db.Decimal(3, 2)
+  averageRating          Decimal?               @db.Decimal(3, 2)
   sourceNote             String?
   dataConfidence         BaselineDataConfidence @default(unknown)
   notes                  String?
@@ -602,6 +609,55 @@ model MerchantNinetyDayGrowthPlan {
   createdBy          UserProfile @relation("GrowthPlanCreatedBy", fields: [createdByProfileId], references: [id])
   updatedByProfileId String
   updatedBy          UserProfile @relation("GrowthPlanUpdatedBy", fields: [updatedByProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum OperatingCapacityStatus {
+  draft // 草稿
+  completed // 已完成
+  archived // 归档
+}
+
+// P2-016 (TASK-045): minimal Fulfillment + Organization intake — turns the two OHC
+// "weak-signal" organs (see merchant-operating-health-check-architecture-v1.md) into
+// collectable, traceable operating facts. 1-1 with Merchant. Summary fields ONLY — NOT a
+// staff / schedule / SOP / task / customer-service / finance system; no scoring, no AI,
+// no decision.
+model MerchantOperatingCapacity {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  status OperatingCapacityStatus @default(draft)
+
+  // Fulfillment（履约 / 出餐）capacity summaries.
+  responseProcessSummary        String?
+  responseTimeSummary           String?
+  bookingProcessSummary         String?
+  serviceCapacitySummary        String?
+  peakHourHandlingSummary       String?
+  fulfillmentRiskSummary        String?
+  customerExperienceRiskSummary String?
+
+  // Organization（老板 / 组织）capacity summaries.
+  ownerDependencySummary     String?
+  staffRoleSummary           String?
+  delegationReadinessSummary String?
+  standardProcessSummary     String?
+  trainingReadinessSummary   String?
+  organizationRiskSummary    String?
+
+  // Cross-cutting.
+  operatingConstraintSummary String?
+  notes                      String?
+
+  // Audit — both reference UserProfile.id (NOT the Supabase auth id).
+  createdByProfileId String
+  createdBy          UserProfile @relation("OperatingCapacityCreatedBy", fields: [createdByProfileId], references: [id])
+  updatedByProfileId String
+  updatedBy          UserProfile @relation("OperatingCapacityUpdatedBy", fields: [updatedByProfileId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

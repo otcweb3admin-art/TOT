@@ -37,6 +37,8 @@ export function getMerchantById(id: string, user: CurrentUser) {
       leadConversion: { include: { updatedBy: true } },
       dataReview: { include: { updatedBy: true } },
       ninetyDayGrowthPlan: { include: { updatedBy: true } },
+      // P2-016: operating capacity (Fulfillment + Organization intake).
+      operatingCapacity: { include: { updatedBy: true } },
     },
   });
 }

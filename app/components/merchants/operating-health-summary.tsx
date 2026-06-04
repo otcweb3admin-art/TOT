@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StatusBadge } from "@/components/merchants/status-badge";
 import type {
   OperatingHealthSnapshot,
@@ -39,15 +40,29 @@ function OrganRow({ organ }: { organ: OperatingOrgan }) {
 
 export function OperatingHealthSummary({
   snapshot,
+  capacityHref,
+  capacityExists,
 }: {
   snapshot: OperatingHealthSnapshot;
+  capacityHref: string;
+  capacityExists: boolean;
 }) {
   return (
     <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-      <h2 className="text-sm font-medium text-zinc-500">经营健康摘要（五器官）</h2>
-      <p className="mt-0.5 text-xs text-zinc-400">
-        基于现有商家资产的只读信号，不代表最终诊断或商业决策。
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-medium text-zinc-500">经营健康摘要（五器官）</h2>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            基于现有商家资产的只读信号，不代表最终诊断或商业决策。
+          </p>
+        </div>
+        <Link
+          href={capacityHref}
+          className="shrink-0 rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+        >
+          {capacityExists ? "编辑经营承接能力" : "补充履约与组织信息"}
+        </Link>
+      </div>
       <p className="mt-1 text-xs text-zinc-400">
         状态：signal 已有信号 · attention 有信号但缺关键项 · missing 暂无信息 · unknown 数据不足。
         {snapshot.hasCriticalAttention && snapshot.firstAttentionOrgan

@@ -57,6 +57,7 @@ export function buildOperatingHealthSnapshot(
   const lc = m.leadConversion;
   const dr = m.dataReview;
   const gp = m.ninetyDayGrowthPlan;
+  const oc = m.operatingCapacity; // P2-016 dedicated Fulfillment + Organization intake
 
   // collect labelled sources for fields that actually carry data
   const src = (cond: boolean, label: string): string[] => (cond ? [label] : []);
@@ -130,19 +131,29 @@ export function buildOperatingHealthSnapshot(
           : "可在诊断中进一步确认 Offer 清晰度与聚焦度。",
   };
 
-  // ---- 3) Fulfillment (no dedicated model — weak signals only) ----
-  const ffRisk =
+  // ---- 3) Fulfillment (reads the dedicated operating-capacity asset; falls back to weak signals) ----
+  const ocFfCapacity =
+    has(oc?.responseProcessSummary) ||
+    has(oc?.responseTimeSummary) ||
+    has(oc?.bookingProcessSummary) ||
+    has(oc?.serviceCapacitySummary) ||
+    has(oc?.peakHourHandlingSummary);
+  const ocFfRisk = has(oc?.fulfillmentRiskSummary) || has(oc?.customerExperienceRiskSummary);
+  const ffDedicated = ocFfCapacity || ocFfRisk; // dedicated intake present?
+  // scattered weak signals — used only when no dedicated capacity data
+  const ffWeakRisk =
     has(p?.executionLimitSummary) ||
     has(d?.riskSummary) ||
     has(lc?.conversionRiskSummary) ||
     has(dr?.problemDiagnosisSummary) ||
     has(dr?.reviewRiskSummary);
-  const ffCapacity = has(lc?.privateDomainSummary);
+  const ffWeakCapacity = has(lc?.privateDomainSummary);
   const ffSources = [
+    ...src(ffDedicated, "经营承接能力采集"),
+    ...src(has(lc?.privateDomainSummary), "TB-006·私域承接"),
     ...src(has(p?.executionLimitSummary), "画像·执行限制"),
     ...src(has(d?.riskSummary), "TB-001·风险"),
     ...src(has(lc?.conversionRiskSummary), "TB-006·转化风险"),
-    ...src(has(lc?.privateDomainSummary), "TB-006·私域承接"),
     ...src(has(dr?.problemDiagnosisSummary), "TB-007·问题诊断"),
     ...src(has(dr?.reviewRiskSummary), "TB-007·复盘风险"),
   ];
@@ -150,18 +161,34 @@ export function buildOperatingHealthSnapshot(
     key: "fulfillment",
     label: "履约器官 (Fulfillment)",
     cart: "出餐",
-    weakSignalOnly: true,
-    status: ffRisk ? "attention" : ffCapacity ? "signal" : "unknown",
-    observation: ffRisk
-      ? `出现执行限制 / 转化风险 / 复盘风险等承接相关信号。${WEAK_NOTE}（履约采集）。`
-      : ffCapacity
-        ? `有私域承接相关说明。${WEAK_NOTE}（履约采集）。`
-        : `当前缺少履约专项数据。${WEAK_NOTE}（履约采集）。`,
+    weakSignalOnly: !ffDedicated,
+    status: ffDedicated
+      ? ocFfRisk
+        ? "attention"
+        : "signal"
+      : ffWeakRisk
+        ? "attention"
+        : ffWeakCapacity
+          ? "signal"
+          : "unknown",
+    observation: ffDedicated
+      ? ocFfRisk
+        ? "已采集履约承接能力，且记录了履约 / 客户体验风险。"
+        : "已采集履约承接能力信息。"
+      : ffWeakRisk
+        ? `出现执行限制 / 转化风险 / 复盘风险等承接相关信号。${WEAK_NOTE}（履约采集）。`
+        : ffWeakCapacity
+          ? `有私域承接相关说明。${WEAK_NOTE}（履约采集）。`
+          : `当前缺少履约专项数据。${WEAK_NOTE}（履约采集）。`,
     sources: ffSources,
-    gaps: ["专门的履约/承接能力数据（响应时效、产能上限、忙时稳定性）"],
-    nextStep: ffRisk
-      ? "建议关注承接能力，可在诊断中进一步确认引流后是否接得住。"
-      : "建议补充履约承接信息（谁接、多久响应、多 10 单是否更乱）。",
+    gaps: ffDedicated ? [] : ["专门的履约/承接能力数据（响应时效、产能上限、忙时稳定性）"],
+    nextStep: ffDedicated
+      ? ocFfRisk
+        ? "建议关注已记录的履约风险，可在诊断中进一步确认引流后是否接得住。"
+        : "可在诊断中进一步确认承接能力是否匹配放量。"
+      : ffWeakRisk
+        ? "建议关注承接能力，可在诊断中进一步确认引流后是否接得住。"
+        : "建议补充履约承接信息（点击「编辑经营承接能力」录入）。",
   };
 
   // ---- 4) Cashflow ----
@@ -202,14 +229,23 @@ export function buildOperatingHealthSnapshot(
         : "可在诊断中进一步确认单位经济与活动盈亏边界。",
   };
 
-  // ---- 5) Organization (no dedicated model — weak signals only) ----
-  const orgRisk =
+  // ---- 5) Organization (reads the dedicated operating-capacity asset; falls back to weak signals) ----
+  const ocOrgCapacity =
+    has(oc?.ownerDependencySummary) ||
+    has(oc?.staffRoleSummary) ||
+    has(oc?.delegationReadinessSummary) ||
+    has(oc?.standardProcessSummary) ||
+    has(oc?.trainingReadinessSummary);
+  const ocOrgRisk = has(oc?.organizationRiskSummary);
+  const orgDedicated = ocOrgCapacity || ocOrgRisk;
+  const orgWeakRisk =
     has(p?.executionLimitSummary) ||
     has(d?.riskSummary) ||
     has(co?.contentRiskSummary) ||
     has(dr?.reviewRiskSummary);
-  const orgCapacity = has(lp?.hostPeopleRequirementSummary) || has(lp?.readinessSummary);
+  const orgWeakCapacity = has(lp?.hostPeopleRequirementSummary) || has(lp?.readinessSummary);
   const orgSources = [
+    ...src(orgDedicated, "经营承接能力采集"),
     ...src(has(p?.executionLimitSummary), "画像·执行限制"),
     ...src(has(d?.riskSummary), "TB-001·风险"),
     ...src(has(co?.contentRiskSummary), "TB-004·内容风险"),
@@ -221,18 +257,34 @@ export function buildOperatingHealthSnapshot(
     key: "organization",
     label: "组织器官 (Organization)",
     cart: "老板",
-    weakSignalOnly: true,
-    status: orgRisk ? "attention" : orgCapacity ? "signal" : "unknown",
-    observation: orgRisk
-      ? `出现执行限制 / 内容或复盘风险等组织相关信号。${WEAK_NOTE}（组织采集）。`
-      : orgCapacity
-        ? `有人员 / 准备度相关说明。${WEAK_NOTE}（组织采集）。`
-        : `当前缺少组织专项数据。${WEAK_NOTE}（组织采集）。`,
+    weakSignalOnly: !orgDedicated,
+    status: orgDedicated
+      ? ocOrgRisk
+        ? "attention"
+        : "signal"
+      : orgWeakRisk
+        ? "attention"
+        : orgWeakCapacity
+          ? "signal"
+          : "unknown",
+    observation: orgDedicated
+      ? ocOrgRisk
+        ? "已采集组织承接能力，且记录了组织风险。"
+        : "已采集组织承接能力信息。"
+      : orgWeakRisk
+        ? `出现执行限制 / 内容或复盘风险等组织相关信号。${WEAK_NOTE}（组织采集）。`
+        : orgWeakCapacity
+          ? `有人员 / 准备度相关说明。${WEAK_NOTE}（组织采集）。`
+          : `当前缺少组织专项数据。${WEAK_NOTE}（组织采集）。`,
     sources: orgSources,
-    gaps: ["专门的组织/单点依赖数据（老板是否单点、可委派性、配合能力）"],
-    nextStep: orgRisk
-      ? "建议关注老板单点依赖，可在诊断中进一步确认 TOT 介入是减负还是增负。"
-      : "建议补充组织信息（是否有可委派人手、老板可投入时间、配合能力）。",
+    gaps: orgDedicated ? [] : ["专门的组织/单点依赖数据（老板是否单点、可委派性、配合能力）"],
+    nextStep: orgDedicated
+      ? ocOrgRisk
+        ? "建议关注已记录的组织风险，可在诊断中进一步确认是减负还是增负。"
+        : "可在诊断中进一步确认老板单点依赖是否影响放量。"
+      : orgWeakRisk
+        ? "建议关注老板单点依赖，可在诊断中进一步确认 TOT 介入是减负还是增负。"
+        : "建议补充组织信息（点击「编辑经营承接能力」录入）。",
   };
 
   const organs = [channel, offer, fulfillment, cashflow, organization];
