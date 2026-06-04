@@ -17,6 +17,7 @@ import {
   merchantVisibilityWhere,
 } from "@/lib/merchants/permissions";
 import { buildMerchantWorkspace } from "@/lib/merchants/workspace";
+import { buildOperatingHealthSnapshot } from "@/lib/merchants/operating-health";
 
 const PREFIX = "SMOKE_TEST_";
 
@@ -97,15 +98,27 @@ async function run(): Promise<void> {
     },
   });
   const audit = { createdByProfileId: owner.id, updatedByProfileId: owner.id };
-  const profile = await prisma.merchantProfile.create({ data: { merchantId: full.id, ...audit } });
-  await prisma.merchantBaselineMetric.create({ data: { merchantId: full.id, ...audit } });
+  const profile = await prisma.merchantProfile.create({
+    data: { merchantId: full.id, currentAcquisitionSummary: "smoke channel", coreOfferSummary: "smoke offer", ...audit },
+  });
+  await prisma.merchantBaselineMetric.create({ data: { merchantId: full.id, monthlyRevenue: 50000, ...audit } });
   // 8 TB nodes -> status "completed"; diagnosis carries an upstream pointer to exercise it.
   await prisma.merchantDiagnosis.create({ data: { merchantId: full.id, status: "completed", sourceProfileId: profile.id, ...audit } });
   await prisma.merchantAccountSetup.create({ data: { merchantId: full.id, status: "completed", ...audit } });
   await prisma.merchantMaterialCollection.create({ data: { merchantId: full.id, status: "completed", ...audit } });
   await prisma.merchantContentOperation.create({ data: { merchantId: full.id, status: "completed", ...audit } });
-  await prisma.merchantLivePlanning.create({ data: { merchantId: full.id, status: "completed", ...audit } });
-  await prisma.merchantLeadConversion.create({ data: { merchantId: full.id, status: "completed", ...audit } });
+  await prisma.merchantLivePlanning.create({ data: { merchantId: full.id, status: "completed", hostPeopleRequirementSummary: "smoke host", ...audit } });
+  await prisma.merchantLeadConversion.create({
+    data: {
+      merchantId: full.id,
+      status: "completed",
+      trafficPathSummary: "smoke traffic",
+      conversionPathSummary: "smoke conversion",
+      attributionMethodSummary: "smoke attribution",
+      privateDomainSummary: "smoke private domain",
+      ...audit,
+    },
+  });
   await prisma.merchantDataReview.create({ data: { merchantId: full.id, status: "completed", ...audit } });
   await prisma.merchantNinetyDayGrowthPlan.create({ data: { merchantId: full.id, status: "completed", ...audit } });
 
@@ -161,6 +174,22 @@ async function run(): Promise<void> {
   check("empty merchant: all 10 nodes missing", wsEmpty.nodes.every((n) => n.status === "missing"));
   check("empty merchant: firstMissing = profile", wsEmpty.firstMissing?.key === "profile", `first=${wsEmpty.firstMissing?.key}`);
   check("empty merchant: next-step suggests filling first node", wsEmpty.nextStep.title.startsWith("建议优先补齐"));
+
+  // 6) OPERATING HEALTH helper (TASK-044) ------------------------------------------------
+  console.log("\n[operating health helper]");
+  const ORGAN_KEYS = ["channel", "offer", "fulfillment", "cashflow", "organization"];
+  const ohFull = buildOperatingHealthSnapshot(fullM);
+  check("full merchant: 5 organs built", ohFull.organs.length === 5, `count=${ohFull.organs.length}`);
+  check("full merchant: organs are the five expected", ORGAN_KEYS.every((k) => ohFull.organs.some((o) => o.key === k)));
+  check("full merchant: no organ is missing (data present)", ohFull.organs.every((o) => o.status !== "missing"));
+  const ohEmpty = buildOperatingHealthSnapshot(emptyM);
+  check("empty merchant: 5 organs built", ohEmpty.organs.length === 5, `count=${ohEmpty.organs.length}`);
+  check("empty merchant: has missing/unknown (no fake health)", ohEmpty.missingEvidenceCount >= 1 && ohEmpty.organs.every((o) => o.status !== "signal"));
+  const ffE = ohEmpty.organs.find((o) => o.key === "fulfillment");
+  const orgE = ohEmpty.organs.find((o) => o.key === "organization");
+  check("empty merchant: fulfillment = unknown + weakSignalOnly", ffE?.status === "unknown" && ffE?.weakSignalOnly === true, `status=${ffE?.status}`);
+  check("empty merchant: organization = unknown + weakSignalOnly", orgE?.status === "unknown" && orgE?.weakSignalOnly === true, `status=${orgE?.status}`);
+  check("full merchant: fulfillment/organization stay weak-signal (not faked healthy)", ohFull.organs.filter((o) => o.weakSignalOnly).length === 2);
 }
 
 async function main(): Promise<void> {

@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
 import { getMerchantById } from "@/lib/merchants/data";
 import { buildMerchantWorkspace } from "@/lib/merchants/workspace";
+import { buildOperatingHealthSnapshot } from "@/lib/merchants/operating-health";
 import { StatusBadge } from "@/components/merchants/status-badge";
 import { AssetSummaryGrid } from "@/components/merchants/asset-summary-grid";
 import { formatDateTime } from "@/components/merchants/format";
 import { WorkspaceNodeRow } from "@/components/merchants/workspace-node-row";
+import { OperatingHealthSummary } from "@/components/merchants/operating-health-summary";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +29,7 @@ export default async function MerchantWorkspacePage({
   if (!merchant) notFound();
 
   const ws = buildMerchantWorkspace(merchant);
+  const ohs = buildOperatingHealthSnapshot(merchant);
   const base = `/dashboard/merchants/${merchant.id}`;
 
   return (
@@ -87,6 +90,9 @@ export default async function MerchantWorkspacePage({
           {ws.nextStep.detail}
         </p>
       </section>
+
+      {/* 经营健康摘要（五器官，只读规则映射） */}
+      <OperatingHealthSummary snapshot={ohs} />
 
       {/* 节点链路总览 */}
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
