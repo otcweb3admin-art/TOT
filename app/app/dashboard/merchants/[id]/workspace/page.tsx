@@ -18,6 +18,8 @@ import { btnPrimary, btnSecondary } from "@/components/ui/button";
 import {
   isDemoMerchant,
   DemoDataBadge,
+  isUatMerchant,
+  UatDataBadge,
 } from "@/components/merchants/demo-data-badge";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +74,7 @@ export default async function MerchantWorkspacePage({
       />
 
       {isDemoMerchant(merchant.name) && <DemoDataBadge />}
+      {isUatMerchant(merchant.name) && <UatDataBadge />}
 
       <IntakeGuidanceBox
         title="工作台使用说明（试点护栏）"

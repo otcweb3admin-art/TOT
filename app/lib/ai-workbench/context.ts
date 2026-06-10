@@ -24,10 +24,12 @@ export type AiMerchantContext = {
   text: string; // 给 Prompt 用的纯文本上下文
   missing: string[]; // 明确缺失信息列表
   isDemo: boolean;
+  isUat: boolean; // TASK-068: UAT 虚拟测试商家（仅压测，不得当真实案例/对外引用）
 };
 
 export function buildAiMerchantContext(m: MerchantFull): AiMerchantContext {
   const isDemo = m.name.startsWith("DEMO_");
+  const isUat = m.name.startsWith("UAT_");
   const missing: string[] = [];
   const track = (label: string, val: string | null | undefined) => {
     const s = v(val);
@@ -40,7 +42,7 @@ export function buildAiMerchantContext(m: MerchantFull): AiMerchantContext {
   const oc = m.operatingCapacity;
 
   const lines: string[] = [];
-  lines.push(`【商家】${m.name}${isDemo ? "（DEMO 演示数据，非真实商家）" : ""}`);
+  lines.push(`【商家】${m.name}${isDemo ? "（DEMO 演示数据，非真实商家）" : ""}${isUat ? "（UAT 虚拟测试数据，仅用于系统测试，非真实商家）" : ""}`);
   lines.push(`行业：${track("行业", m.industry)} ｜ 城市/区域：${track("城市/区域", [m.city, m.country].filter(Boolean).join(" / ") || null)}`);
 
   lines.push("");
@@ -102,5 +104,5 @@ export function buildAiMerchantContext(m: MerchantFull): AiMerchantContext {
     missing.forEach((x) => lines.push(`- ${x}`));
   }
 
-  return { text: lines.join("\n"), missing, isDemo };
+  return { text: lines.join("\n"), missing, isDemo, isUat };
 }

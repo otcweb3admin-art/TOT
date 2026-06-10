@@ -10,6 +10,8 @@ import { ManualResultCapture } from "@/components/ai-workbench/manual-result-cap
 import {
   isDemoMerchant,
   DemoDataBadge,
+  isUatMerchant,
+  UatDataBadge,
 } from "@/components/merchants/demo-data-badge";
 import { formatDateTime } from "@/components/merchants/format";
 import { PageHeader } from "@/components/ui/page-header";
@@ -121,6 +123,7 @@ export default async function AiWorkbenchPage({
                       {m.name}
                     </span>
                     {isDemoMerchant(m.name) && <DemoDataBadge variant="compact" />}
+                    {isUatMerchant(m.name) && <UatDataBadge variant="compact" />}
                     <span className="text-[11px] text-zinc-400">
                       创建于 {formatDateTime(m.createdAt)}
                     </span>
@@ -144,6 +147,11 @@ export default async function AiWorkbenchPage({
         {selected && ctx?.isDemo && (
           <p className="mt-2 rounded bg-rose-50 px-3 py-2 text-[11px] text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
             当前选择的是 DEMO 演示数据：仅用于演示 / 培训，不得当真实案例，不得用于承诺增长。
+          </p>
+        )}
+        {selected && ctx?.isUat && (
+          <p className="mt-2 rounded bg-indigo-50 px-3 py-2 text-[11px] text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300">
+            当前选择的是 UAT 虚拟测试商家：仅用于系统测试，不得当真实案例，不得引用为客户成果；AI 输出仍必须人工审核。
           </p>
         )}
       </section>

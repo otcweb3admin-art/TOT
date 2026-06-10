@@ -12,6 +12,8 @@ import { formatDateTime, referenceLabel } from "@/components/merchants/format";
 import {
   isDemoMerchant,
   DemoDataBadge,
+  isUatMerchant,
+  UatDataBadge,
 } from "@/components/merchants/demo-data-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { btnPrimary, btnSecondary } from "@/components/ui/button";
@@ -290,6 +292,7 @@ export default async function MerchantDetailPage({
       />
 
       {isDemoMerchant(merchant.name) && <DemoDataBadge />}
+      {isUatMerchant(merchant.name) && <UatDataBadge />}
 
       {/* 基础信息 — always present (no create/edit link), so a plain section. */}
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">

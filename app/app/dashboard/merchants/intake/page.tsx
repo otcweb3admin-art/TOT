@@ -7,6 +7,8 @@ import { IntakeStepCard } from "@/components/merchants/intake-step-card";
 import {
   isDemoMerchant,
   DemoDataBadge,
+  isUatMerchant,
+  UatDataBadge,
 } from "@/components/merchants/demo-data-badge";
 import { formatDateTime } from "@/components/merchants/format";
 import { PageHeader } from "@/components/ui/page-header";
@@ -158,6 +160,7 @@ export default async function MerchantIntakeWizardPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{m.name}</span>
                   {isDemoMerchant(m.name) && <DemoDataBadge variant="compact" />}
+                  {isUatMerchant(m.name) && <UatDataBadge variant="compact" />}
                   <span className="text-[11px] text-zinc-400">
                     创建于 {formatDateTime(m.createdAt)}
                   </span>

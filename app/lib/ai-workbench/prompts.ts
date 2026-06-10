@@ -27,6 +27,11 @@ export function buildAiPrompt(task: AiTask, ctx: AiMerchantContext): string {
       `${SAFETY_RULES.length + 1}. 注意：本商家是 DEMO 演示数据，不是真实商家；输出仅用于演示/培训，不得当作真实案例引用。`,
     );
   }
+  if (ctx.isUat) {
+    parts.push(
+      `${SAFETY_RULES.length + 1}. 注意：这是 UAT 虚拟测试数据，仅用于系统测试；不得把它当真实案例，不得对外引用，不得用于增长承诺。`,
+    );
+  }
   if (task.warning) {
     parts.push(`特别提醒：${task.warning}`);
   }

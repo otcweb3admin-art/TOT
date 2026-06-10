@@ -10,6 +10,9 @@
     "smoke:p2": "node --env-file=.env --import tsx ./scripts/smoke-p2.ts",
     "seed:demo": "node --env-file=.env --import tsx ./scripts/seed-demo-merchant.ts",
     "seed:demo:clean": "node --env-file=.env --import tsx ./scripts/seed-demo-merchant.ts --clean",
+    "seed:uat": "node --env-file=.env --import tsx ./scripts/seed-uat-merchants.ts",
+    "seed:uat:clean": "node --env-file=.env --import tsx ./scripts/seed-uat-merchants.ts --clean",
+    "uat:full-flow": "node --env-file=.env --import tsx ./scripts/uat-full-flow.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

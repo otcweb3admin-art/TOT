@@ -4,6 +4,8 @@ import { listMerchants } from "@/lib/merchants/data";
 import {
   isDemoMerchant,
   DemoDataBadge,
+  isUatMerchant,
+  UatDataBadge,
 } from "@/components/merchants/demo-data-badge";
 import { StatusBadge } from "@/components/merchants/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -82,6 +84,11 @@ export default async function MerchantsPage() {
                     {isDemoMerchant(m.name) && (
                       <span className="ml-2">
                         <DemoDataBadge variant="compact" />
+                      </span>
+                    )}
+                    {isUatMerchant(m.name) && (
+                      <span className="ml-2">
+                        <UatDataBadge variant="compact" />
                       </span>
                     )}
                   </td>
