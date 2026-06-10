@@ -28,6 +28,7 @@ import {
   canCancelHandoff,
 } from "@/lib/merchants/role-access";
 import { AI_TASKS, getAiTask } from "@/lib/ai-workbench/tasks";
+import { ROLE_HOME, getRoleHome } from "@/lib/dashboard/role-home";
 import { buildAiMerchantContext } from "@/lib/ai-workbench/context";
 import { buildAiPrompt } from "@/lib/ai-workbench/prompts";
 
@@ -276,6 +277,15 @@ async function run(): Promise<void> {
   const aiPrompt = buildAiPrompt(getAiTask("diagnosis")!, ctxFull);
   check("prompt: carries safety rules (no fabrication / no growth promise)", aiPrompt.includes("不得编造数据") && aiPrompt.includes("不得承诺增长结果") && aiPrompt.includes("待补充"));
   check("prompt: carries task structure + merchant context", aiPrompt.includes("TB-001 商家诊断") && aiPrompt.includes("已知事实摘要") && aiPrompt.includes("【商家】"));
+
+  // 11) ROLE HOME mapping (TASK-070, Phase 1 role routing) -------------------------------
+  console.log("\n[role-home mapping]");
+  const ALL_ROLES = ["merchant", "collector", "operator", "executor", "admin", "ai_worker"] as const;
+  check("role-home covers all 6 roles with workspace names", ALL_ROLES.every((r) => (ROLE_HOME[r]?.workspaceName ?? "").length > 0));
+  check("every role has description + duties + boundaries + nextHint", ALL_ROLES.every((r) => { const h = ROLE_HOME[r]; return h.description.length > 0 && h.duties.length > 0 && h.boundaries.length > 0 && h.nextHint.length > 0; }));
+  check("ai_worker is NOT a human workspace", getRoleHome("ai_worker").humanWorkspace === false && ALL_ROLES.filter((r) => r !== "ai_worker").every((r) => getRoleHome(r).humanWorkspace === true));
+  check("operator maps to 人工审核 (not generic ops)", getRoleHome("operator").workspaceName.includes("人工审核"));
+  check("admin maps to 平台管理; merchant/collector/executor named sensibly", getRoleHome("admin").workspaceName.includes("平台管理") && getRoleHome("merchant").workspaceName.includes("客户") && getRoleHome("collector").workspaceName.includes("采集") && getRoleHome("executor").workspaceName.includes("外包"));
 }
 
 async function main(): Promise<void> {

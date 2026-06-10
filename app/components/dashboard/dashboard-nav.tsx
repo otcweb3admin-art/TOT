@@ -12,6 +12,19 @@ const NAV_ITEMS = [
   { href: "/dashboard/launch-readiness", label: "上线检查" },
 ];
 
+// TASK-070: per-role nav visibility — DISPLAY filtering only (server-side permission
+// enforcement is unchanged; direct URLs still go through the existing guards).
+// merchant / ai_worker / executor see only their own workspace home; collector sees the
+// intake-related entries; operator / admin see everything.
+const NAV_HREFS_BY_ROLE: Record<Role, string[]> = {
+  merchant: ["/dashboard"],
+  ai_worker: ["/dashboard"],
+  executor: ["/dashboard"],
+  collector: ["/dashboard", "/dashboard/merchants", "/dashboard/merchants/intake"],
+  operator: NAV_ITEMS.map((i) => i.href),
+  admin: NAV_ITEMS.map((i) => i.href),
+};
+
 /**
  * Unified top navigation for all /dashboard pages (TASK-063, product usability shell).
  * Server component, rendered by the dashboard layout — every page gets the same way back,
@@ -20,9 +33,11 @@ const NAV_ITEMS = [
 export function DashboardNav({
   email,
   role,
+  workspaceName,
 }: {
   email: string;
   role: Role;
+  workspaceName: string;
 }) {
   return (
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -31,19 +46,24 @@ export function DashboardNav({
           TOT
         </Link>
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV_ITEMS.filter((item) => NAV_HREFS_BY_ROLE[role].includes(item.href)).map(
+            (item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
         <div className="ml-auto flex items-center gap-3 text-xs text-zinc-500">
           <span className="hidden sm:inline">{email}</span>
-          <span className="rounded bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">
+          <span className="rounded bg-indigo-100 px-2 py-0.5 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+            {workspaceName}
+          </span>
+          <span className="hidden rounded bg-zinc-100 px-2 py-0.5 sm:inline dark:bg-zinc-800">
             {roleLabel(role)}
           </span>
           <form action={logout}>

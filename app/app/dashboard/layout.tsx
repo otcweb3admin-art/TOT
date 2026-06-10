@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { requireUser } from "@/lib/auth/dal";
+import { getRoleHome } from "@/lib/dashboard/role-home";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 
 /**
@@ -17,7 +18,11 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen">
-      <DashboardNav email={user.email} role={user.role} />
+      <DashboardNav
+        email={user.email}
+        role={user.role}
+        workspaceName={getRoleHome(user.role).workspaceName}
+      />
       {children}
     </div>
   );
