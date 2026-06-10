@@ -96,7 +96,7 @@ export default async function DashboardPage() {
           <QuickActionCard
             href="/dashboard/ai-workbench"
             title="AI 工作台"
-            description="V0 占位 · AI 仅生成草稿辅助，人工确认后才录入"
+            description="选商家 → 生成 Prompt → 人工审核后保存到节点（不自动保存）"
           />
           <QuickActionCard
             href="#getting-started"

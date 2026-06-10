@@ -27,6 +27,9 @@ import {
   canReceiveHandoff,
   canCancelHandoff,
 } from "@/lib/merchants/role-access";
+import { AI_TASKS, getAiTask } from "@/lib/ai-workbench/tasks";
+import { buildAiMerchantContext } from "@/lib/ai-workbench/context";
+import { buildAiPrompt } from "@/lib/ai-workbench/prompts";
 
 const PREFIX = "SMOKE_TEST_";
 
@@ -262,6 +265,17 @@ async function run(): Promise<void> {
   // transition works at the DB layer (received)
   const recv = await prisma.merchantStageHandoff.update({ where: { id: handoff.id }, data: { status: "received", receivedByProfileId: other.id, receivedAt: new Date() } });
   check("handoff DB transition submitted -> received", recv.status === "received" && recv.receivedByProfileId === other.id);
+
+  // 10) AI WORKBENCH helpers (TASK-065) — pure prompt flow, no API, no save -------------
+  console.log("\n[ai-workbench helpers]");
+  check("7 AI tasks defined; unknown key -> null", AI_TASKS.length === 7 && getAiTask("diagnosis") !== null && getAiTask("nope") === null);
+  const ctxFull = buildAiMerchantContext(fullM);
+  const ctxEmpty = buildAiMerchantContext(emptyM);
+  check("context: full merchant builds (商家 + 五器官)", ctxFull.text.includes("【商家】") && ctxFull.text.includes("五器官"));
+  check("context: empty merchant marks gaps 待补充 (never faked)", ctxEmpty.text.includes("待补充") && ctxEmpty.missing.length > 0);
+  const aiPrompt = buildAiPrompt(getAiTask("diagnosis")!, ctxFull);
+  check("prompt: carries safety rules (no fabrication / no growth promise)", aiPrompt.includes("不得编造数据") && aiPrompt.includes("不得承诺增长结果") && aiPrompt.includes("待补充"));
+  check("prompt: carries task structure + merchant context", aiPrompt.includes("TB-001 商家诊断") && aiPrompt.includes("已知事实摘要") && aiPrompt.includes("【商家】"));
 }
 
 async function main(): Promise<void> {
