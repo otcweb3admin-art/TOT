@@ -12,6 +12,9 @@ import {
   DemoDataBadge,
 } from "@/components/merchants/demo-data-badge";
 import { formatDateTime } from "@/components/merchants/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { btnPrimary, btnSecondary, btnSecondarySm } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -63,21 +66,16 @@ export default async function AiWorkbenchPage({
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6 md:p-8">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">AI 工作台</h1>
-          <p className="text-sm text-zinc-500">
-            当前模式：<span className="font-medium">人工辅助模式 V0</span> —
-            不自动调用 AI API、不自动保存结果。流程：{FLOW.join(" → ")}。
-          </p>
-        </div>
-        <Link
-          href="/dashboard"
-          className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-        >
-          ← 首页
-        </Link>
-      </header>
+      <PageHeader
+        title="AI 工作台"
+        status="人工辅助模式 V0"
+        description={`不自动调用 AI API、不自动保存结果。流程：${FLOW.join(" → ")}。`}
+        actions={
+          <Link href="/dashboard" className={btnSecondary}>
+            ← 首页
+          </Link>
+        }
+      />
 
       <section className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
         <p className="font-medium">AI 边界（必读）</p>
@@ -96,16 +94,19 @@ export default async function AiWorkbenchPage({
           </p>
         )}
         {recent.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-500">
-            暂无商家——请先到
-            <Link
-              href="/dashboard/merchants/intake"
-              className="underline underline-offset-2"
-            >
-              商家接入向导
-            </Link>
-            创建并录入商家资料（或运行 <code>npm run seed:demo</code> 生成 DEMO）。
-          </p>
+          <div className="mt-2">
+            <EmptyState
+              title="还没有可选商家"
+              hints={[
+                "AI 草稿需要先有商家资料：请先到「商家接入向导」创建并录入商家，或运行 npm run seed:demo 生成 DEMO 学习。",
+              ]}
+              actions={
+                <Link href="/dashboard/merchants/intake" className={btnPrimary}>
+                  进入商家接入向导
+                </Link>
+              }
+            />
+          </div>
         ) : (
           <ul className="mt-2 flex flex-col">
             {recent.map((m) => {
@@ -131,9 +132,9 @@ export default async function AiWorkbenchPage({
                   </div>
                   <Link
                     href={`/dashboard/ai-workbench${qs(m.id, task?.key)}`}
-                    className="rounded border border-zinc-300 px-2.5 py-1 text-xs dark:border-zinc-700"
+                    className={btnSecondarySm}
                   >
-                    {isSelected ? "重新载入" : "选择"}
+                    {isSelected ? "重新载入" : "选择此商家"}
                   </Link>
                 </li>
               );
@@ -182,7 +183,7 @@ export default async function AiWorkbenchPage({
           <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-medium text-zinc-500">
-                已选商家上下文：{selected.name}
+                ③ 系统整理的商家上下文：{selected.name}
               </h2>
               <span className="text-[11px] text-zinc-400">
                 链路 {ws.completedCount}/{ws.totalCount} 节点已创建 · 缺失信息{" "}
@@ -209,7 +210,7 @@ export default async function AiWorkbenchPage({
               <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-medium text-zinc-500">
-                    生成的 Prompt：{task.label}（复制到你使用的 AI 工具）
+                    ④ 生成的 Prompt：{task.label}（复制到你使用的 AI 工具）
                   </h2>
                   <CopyPromptButton text={prompt} />
                 </div>

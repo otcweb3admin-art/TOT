@@ -45,7 +45,7 @@ export default async function EditBaselinePage({
             {b ? "编辑增长前基准数据" : "创建增长前基准数据"}
           </h1>
           <p className="text-sm text-zinc-500">
-            {merchant.name} · 增长前基线（为后续 TB-001 / MVS / 复盘提供对照，本阶段非完整指标系统）
+            {merchant.name} · 增长前基线（没有基线无法证明增长）· 保存后将返回商家详情页
           </p>
         </div>
         <Link

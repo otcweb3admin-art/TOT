@@ -56,7 +56,7 @@ export default async function EditOperatingCapacityPage({
             {oc ? "编辑经营承接能力" : "创建经营承接能力"}
           </h1>
           <p className="text-sm text-zinc-500">
-            {merchant.name} · 履约与组织承接能力采集
+            {merchant.name} · 履约与组织承接能力采集（决定能否承接增长）· 保存后将返回工作台
           </p>
         </div>
         <Link

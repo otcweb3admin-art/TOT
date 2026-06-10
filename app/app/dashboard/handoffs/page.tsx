@@ -3,6 +3,9 @@ import { requireUser } from "@/lib/auth/dal";
 import { listRecentHandoffs } from "@/lib/dashboard/home";
 import { StatusBadge } from "@/components/merchants/status-badge";
 import { formatDateTime } from "@/components/merchants/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { btnPrimary, btnSecondary } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -18,35 +21,31 @@ export default async function HandoffCenterPage() {
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6 md:p-8">
-      <header>
-        <h1 className="text-2xl font-semibold">交接中心</h1>
-        <p className="text-sm text-zinc-500">
-          用于查看商家节点交接记录。接收 / 取消操作在对应商家的工作台进行；交接不代表自动审批，
-          是否进入下一环节仍需人工确认。
-        </p>
-      </header>
+      <PageHeader
+        title="交接中心"
+        description="查看商家节点交接记录。接收 / 取消操作在对应商家的工作台进行；交接不代表自动审批，是否进入下一环节仍需人工确认。"
+        actions={
+          <Link href="/dashboard" className={btnSecondary}>
+            ← 首页
+          </Link>
+        }
+      />
 
       {handoffs.length === 0 ? (
-        <section className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          <p>暂无交接记录。</p>
-          <p className="mt-1 text-xs">
-            在某个商家的工作台底部「环节交接记录」区块可以创建第一条交接。
-          </p>
-          <div className="mt-3 flex justify-center gap-3 text-xs">
-            <Link
-              href="/dashboard/merchants"
-              className="rounded border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
-            >
-              去商家列表
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
-            >
-              返回首页
-            </Link>
-          </div>
-        </section>
+        <EmptyState
+          title="当前暂无交接记录"
+          hints={["交接通常在商家工作台底部的「环节交接记录」区块创建。"]}
+          actions={
+            <>
+              <Link href="/dashboard/merchants" className={btnPrimary}>
+                打开商家列表
+              </Link>
+              <Link href="/dashboard" className={btnSecondary}>
+                返回首页
+              </Link>
+            </>
+          }
+        />
       ) : (
         <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <h2 className="mb-1 text-sm font-medium text-zinc-500">

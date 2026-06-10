@@ -26,7 +26,26 @@ const STATUS_STYLES: Record<string, string> = {
 
 const FALLBACK = "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300";
 
+// TASK-066: plain-language gloss so operators read statuses at a glance. Additive —
+// the underlying status VALUE is unchanged; we only render "value 中文".
+const STATUS_LABELS: Record<string, string> = {
+  missing: "未创建",
+  signal: "已有信号",
+  attention: "需关注",
+  unknown: "数据不足",
+  submitted: "已提交交接",
+  received: "已接收",
+  cancelled: "已取消",
+  draft: "草稿",
+  completed: "已完成",
+  archived: "已归档",
+  lead: "待评估",
+  active: "合作中",
+  paused: "暂停",
+};
+
 export function StatusBadge({ status }: { status: string }) {
+  const label = STATUS_LABELS[status];
   return (
     <span
       className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -34,6 +53,7 @@ export function StatusBadge({ status }: { status: string }) {
       }`}
     >
       {status}
+      {label ? ` ${label}` : ""}
     </span>
   );
 }

@@ -45,7 +45,7 @@ export default async function DiagnosisPage({
             {diag ? "编辑 TB-001 诊断" : "创建 TB-001 诊断"}（最小）
           </h1>
           <p className="text-sm text-zinc-500">
-            {merchant.name} · 人工填写最小诊断摘要（本阶段非完整 TB-001 / 非 AI 诊断）
+            {merchant.name} · TB-001 商家诊断（人工填写，缺证据写「待验证」）· 保存后将返回商家详情页
           </p>
         </div>
         <Link

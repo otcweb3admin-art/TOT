@@ -9,6 +9,8 @@ import {
   DemoDataBadge,
 } from "@/components/merchants/demo-data-badge";
 import { formatDateTime } from "@/components/merchants/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { btnSecondary } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -80,22 +82,16 @@ export default async function MerchantIntakeWizardPage() {
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6 md:p-8">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">商家接入向导</h1>
-          <p className="text-sm text-zinc-500">
-            把 Field Pack 线下采集到的资料，按推荐顺序录入系统。当前系统处于
-            <span className="font-medium">真实试点前准备态</span>
-            ：真实商家接入需负责人授权。
-          </p>
-        </div>
-        <Link
-          href="/dashboard"
-          className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-        >
-          ← 首页
-        </Link>
-      </header>
+      <PageHeader
+        title="商家接入向导"
+        status="真实试点前准备态"
+        description="把 Field Pack 线下采集到的资料，按推荐顺序录入系统。真实商家接入需负责人授权。"
+        actions={
+          <Link href="/dashboard" className={btnSecondary}>
+            ← 首页
+          </Link>
+        }
+      />
 
       <IntakeGuidanceBox
         tone="warning"

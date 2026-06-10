@@ -25,7 +25,7 @@ export default async function EditMerchantProfilePage({
             {merchant.profile ? "编辑商家画像" : "创建商家画像"}
           </h1>
           <p className="text-sm text-zinc-500">
-            {merchant.name} · 摘要级画像（为后续 TB-001 / 诊断 / 策略提供输入，本阶段非完整 TB-001）
+            {merchant.name} · 摘要级画像（为后续 TB-001 商家诊断提供输入）· 保存后将返回商家详情页
           </p>
         </div>
         <Link

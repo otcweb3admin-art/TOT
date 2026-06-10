@@ -13,6 +13,8 @@ import {
   isDemoMerchant,
   DemoDataBadge,
 } from "@/components/merchants/demo-data-badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { btnPrimary, btnSecondary } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -269,34 +271,23 @@ export default async function MerchantDetailPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{merchant.name}</h1>
-          <p className="text-sm text-zinc-500">
-            商家详情 · P2 Merchant Intake Foundation
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Link
-            href={`${base}/workspace`}
-            className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white dark:bg-white dark:text-zinc-900"
-          >
-            打开工作台
-          </Link>
-          <Link
-            href="/dashboard/merchants/intake"
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            接入向导
-          </Link>
-          <Link
-            href="/dashboard/merchants"
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            ← 列表
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title={merchant.name}
+        description="商家详情——逐节点查看与编辑；想看整体链路与缺口，请打开工作台。"
+        actions={
+          <>
+            <Link href={`${base}/workspace`} className={btnPrimary}>
+              打开工作台
+            </Link>
+            <Link href="/dashboard/merchants/intake" className={btnSecondary}>
+              接入向导
+            </Link>
+            <Link href="/dashboard/merchants" className={btnSecondary}>
+              ← 列表
+            </Link>
+          </>
+        }
+      />
 
       {isDemoMerchant(merchant.name) && <DemoDataBadge />}
 

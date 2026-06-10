@@ -6,8 +6,10 @@ import { roleLabel } from "@/lib/merchants/role-access";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "首页" },
   { href: "/dashboard/merchants", label: "商家管理" },
+  { href: "/dashboard/merchants/intake", label: "接入向导" },
   { href: "/dashboard/handoffs", label: "交接中心" },
   { href: "/dashboard/ai-workbench", label: "AI 工作台" },
+  { href: "/dashboard/launch-readiness", label: "上线检查" },
 ];
 
 /**

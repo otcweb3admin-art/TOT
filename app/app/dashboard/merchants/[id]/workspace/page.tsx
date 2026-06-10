@@ -13,6 +13,8 @@ import { OperatingHealthSummary } from "@/components/merchants/operating-health-
 import { WorkspaceStageSummary } from "@/components/merchants/workspace-stage-summary";
 import { roleLabel } from "@/lib/merchants/role-access";
 import { HandoffSection } from "@/components/merchants/handoff-section";
+import { PageHeader } from "@/components/ui/page-header";
+import { btnPrimary, btnSecondary } from "@/components/ui/button";
 import {
   isDemoMerchant,
   DemoDataBadge,
@@ -42,38 +44,32 @@ export default async function MerchantWorkspacePage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-8">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{merchant.name}</h1>
-          <p className="text-sm text-zinc-500">商家工作台 · 节点总览</p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Link
-            href={base}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            详情
-          </Link>
-          <Link
-            href={`/dashboard/ai-workbench?merchantId=${merchant.id}`}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            用 AI 生成草稿
-          </Link>
-          <Link
-            href="/dashboard/merchants/intake"
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            接入向导
-          </Link>
-          <Link
-            href="/dashboard/merchants"
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            列表
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title={merchant.name}
+        description="商家工作台 · 节点总览——看链路状态、五器官缺口与交接；状态说明：missing 未创建 · draft 草稿 · completed 已完成 · archived 已归档。"
+        actions={
+          <>
+            <Link
+              href={`/dashboard/ai-workbench?merchantId=${merchant.id}`}
+              className={btnPrimary}
+            >
+              用 AI 生成草稿
+            </Link>
+            <Link href={`${base}/handoffs/new`} className={btnSecondary}>
+              新增交接
+            </Link>
+            <Link href={base} className={btnSecondary}>
+              详情
+            </Link>
+            <Link href="/dashboard/merchants/intake" className={btnSecondary}>
+              接入向导
+            </Link>
+            <Link href="/dashboard/merchants" className={btnSecondary}>
+              列表
+            </Link>
+          </>
+        }
+      />
 
       {isDemoMerchant(merchant.name) && <DemoDataBadge />}
 

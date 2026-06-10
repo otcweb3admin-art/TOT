@@ -32,7 +32,7 @@ export function ManualResultCapture({
   return (
     <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="text-sm font-medium text-zinc-500">
-        把 AI 输出粘贴到这里 · 人工审核（不会自动保存）
+        ⑤ 把 AI 输出粘贴到这里 · 人工审核（不会自动保存）
       </h2>
       <ul className="mt-1 list-disc pl-5 text-[11px] text-amber-700 dark:text-amber-400 [&>li]:mt-0.5">
         <li>粘贴后必须人工审核：删除编造内容，标记「待验证」信息。</li>
