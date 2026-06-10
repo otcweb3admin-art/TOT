@@ -55,6 +55,12 @@ export default async function MerchantWorkspacePage({
             详情
           </Link>
           <Link
+            href="/dashboard/merchants/intake"
+            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
+          >
+            接入向导
+          </Link>
+          <Link
             href="/dashboard/merchants"
             className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
           >

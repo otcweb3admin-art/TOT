@@ -60,6 +60,12 @@ export default async function DashboardPage() {
         <h2 className="mb-2 text-sm font-medium text-zinc-500">快捷入口</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <QuickActionCard
+            href="/dashboard/merchants/intake"
+            title="商家接入向导"
+            description="开始接入 / 继续录入商家——按 6 步顺序录入资料"
+            hint="第一次录入从这里开始"
+          />
+          <QuickActionCard
             href="/dashboard/merchants/new"
             title="新建商家"
             description="录入一个商家主体（真实商家需负责人授权后再建）"

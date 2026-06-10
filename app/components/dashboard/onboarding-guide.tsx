@@ -38,12 +38,16 @@ export function OnboardingGuide({ demoWorkspaceHref }: { demoWorkspaceHref: stri
             <li>先用候选商家跟进表线下接触（docs 内有模板）</li>
             <li>用现场采集包（Field Pack）采集资料</li>
             <li>
-              <Link href="/dashboard/merchants/new" className="underline underline-offset-2">
-                新建商家
+              打开
+              <Link
+                href="/dashboard/merchants/intake"
+                className="underline underline-offset-2"
+              >
+                商家接入向导
               </Link>
-              并填写基础资料
+              ，按 6 步顺序录入
             </li>
-            <li>填写 商家画像 / 增长前基准 / 经营承接能力</li>
+            <li>新建商家 → 填写 商家画像 / 增长前基准 / 经营承接能力</li>
             <li>进入工作台检查缺口（五器官）</li>
             <li>必要时创建交接记录，交给下一个角色</li>
             <li>AI 仅作为草稿辅助，人工确认后再保存</li>
