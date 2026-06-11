@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { MerchantStageNode } from "@prisma/client";
 import { requireUser } from "@/lib/auth/dal";
 import { roleLabel } from "@/lib/merchants/role-access";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/lib/tasks/access";
 import { getWorkItemByIdForUser, listAssignableProfiles } from "@/lib/tasks/data";
 import { WORK_ITEM_TYPE_LABELS } from "@/lib/tasks/display";
+import { aiTaskForTargetNode } from "@/lib/ai-workbench/draft-review";
 import {
   TaskStatusBadge,
   TaskPriorityBadge,
@@ -32,6 +34,87 @@ function TextBlock({ label, value }: { label: string; value: string | null }) {
       <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-300">
         {value ?? "（未填写）"}
       </p>
+    </section>
+  );
+}
+
+const AI_DRAFT_RISK_REMINDERS = [
+  "AI 输出不是事实——逐条核对，删除编造数据。",
+  "没有证据的内容必须标「待验证」。",
+  "不得保留承诺增长结果的表述。",
+  "审核通过后系统不会自动写入业务节点——仍需人工到目标节点编辑页保存。",
+];
+
+/** ai_draft_review 专属面板 (TASK-072)：标识 + 目标节点 + 状态指引 + 风险提醒。 */
+function AiDraftReviewPanel({
+  status,
+  merchantId,
+  targetNode,
+}: {
+  status: string;
+  merchantId: string | null;
+  targetNode: MerchantStageNode | null;
+}) {
+  const aiTask = aiTaskForTargetNode(targetNode);
+  const nodeEditHref =
+    merchantId && aiTask ? `/dashboard/merchants/${merchantId}/${aiTask.nodeSegment}` : null;
+  const aiWorkbenchHref =
+    merchantId && aiTask
+      ? `/dashboard/ai-workbench?merchantId=${merchantId}&task=${aiTask.key}`
+      : "/dashboard/ai-workbench";
+
+  return (
+    <section className="rounded-lg border border-indigo-300 bg-indigo-50 p-4 text-sm dark:border-indigo-800 dark:bg-indigo-950/30">
+      <h2 className="font-medium text-indigo-800 dark:text-indigo-300">
+        AI 草稿审核任务
+        {aiTask && (
+          <span className="ml-2 text-xs font-normal">
+            AI 任务：{aiTask.label} → 目标节点：{aiTask.nodeLabel}
+          </span>
+        )}
+      </h2>
+
+      {status === "submitted" && (
+        <p className="mt-1 text-xs text-indigo-800/90 dark:text-indigo-300/90">
+          当前待审核：由 operator（或 admin）对照下方「AI 草稿正文」与验收标准，决定「审核通过」或「退回修改」。
+        </p>
+      )}
+      {status === "changes_requested" && (
+        <p className="mt-1 text-xs text-indigo-800/90 dark:text-indigo-300/90">
+          已退回：请按「审核意见」回{" "}
+          <Link href={aiWorkbenchHref} className="underline underline-offset-2">
+            AI 工作台
+          </Link>{" "}
+          重新生成 / 修改后再提交一条新的审核任务。
+        </p>
+      )}
+      {status === "approved" && (
+        <div className="mt-1 text-xs text-indigo-800/90 dark:text-indigo-300/90">
+          <p>
+            审核已通过。下一步：复制下方审核后的草稿正文，到对应业务节点<strong>手动保存</strong>
+            （系统不会自动写入）。保存后可回任务详情「标记完成」。
+          </p>
+          {nodeEditHref && (
+            <Link
+              href={nodeEditHref}
+              className="mt-2 inline-flex rounded border border-indigo-400 bg-white px-3 py-1.5 font-medium text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+            >
+              去「{aiTask?.nodeLabel}」编辑页手动保存 →
+            </Link>
+          )}
+        </div>
+      )}
+      {status === "completed" && (
+        <p className="mt-1 text-xs text-indigo-800/90 dark:text-indigo-300/90">
+          已完成：草稿经人工审核并已由人工保存处理。
+        </p>
+      )}
+
+      <ul className="mt-2 list-disc pl-5 text-[11px] text-indigo-800/80 dark:text-indigo-300/80 [&>li]:mt-0.5">
+        {AI_DRAFT_RISK_REMINDERS.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -89,6 +172,14 @@ export default async function TaskDetailPage({
           requiresClientConfirmation={wi.requiresClientConfirmation}
         />
       </div>
+
+      {wi.type === "ai_draft_review" && (
+        <AiDraftReviewPanel
+          status={wi.status}
+          merchantId={wi.merchant?.id ?? null}
+          targetNode={wi.targetNode}
+        />
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
@@ -159,7 +250,14 @@ export default async function TaskDetailPage({
         <TextBlock label="说明" value={wi.description} />
         <TextBlock label="要求" value={wi.requirements} />
         <TextBlock label="验收标准" value={wi.acceptanceCriteria} />
-        <TextBlock label="成果摘要（执行人提交）" value={wi.resultSummary} />
+        <TextBlock
+          label={
+            wi.type === "ai_draft_review"
+              ? "AI 草稿正文（人工粘贴 / 修改后，待人工审核）"
+              : "成果摘要（执行人提交）"
+          }
+          value={wi.resultSummary}
+        />
         <TextBlock label="审核意见 / 退回原因" value={wi.reviewNote} />
       </div>
 

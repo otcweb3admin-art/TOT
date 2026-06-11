@@ -5,6 +5,7 @@ import { AI_TASKS, getAiTask } from "@/lib/ai-workbench/tasks";
 import { buildAiMerchantContext } from "@/lib/ai-workbench/context";
 import { buildAiPrompt } from "@/lib/ai-workbench/prompts";
 import { buildMerchantWorkspace } from "@/lib/merchants/workspace";
+import { canCreateWorkItemType } from "@/lib/tasks/access";
 import { CopyPromptButton } from "@/components/ai-workbench/copy-prompt-button";
 import { ManualResultCapture } from "@/components/ai-workbench/manual-result-capture";
 import {
@@ -230,6 +231,10 @@ export default async function AiWorkbenchPage({
               <ManualResultCapture
                 nodeHref={`/dashboard/merchants/${selected.id}/${task.nodeSegment}`}
                 nodeLabel={task.nodeLabel}
+                merchantId={selected.id}
+                aiTaskKey={task.key}
+                canSubmitReviewTask={canCreateWorkItemType(user.role, "ai_draft_review")}
+                isAdmin={user.role === "admin"}
               />
             </>
           ) : (

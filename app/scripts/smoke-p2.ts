@@ -49,6 +49,11 @@ import {
   WORK_ITEM_STATUS_LABELS,
   WORK_ITEM_PRIORITY_LABELS,
 } from "@/lib/tasks/display";
+import {
+  AI_TASK_TARGET_NODE,
+  aiTaskForTargetNode,
+  buildAiDraftReviewWorkItemData,
+} from "@/lib/ai-workbench/draft-review";
 
 const PREFIX = "SMOKE_TEST_";
 
@@ -408,6 +413,51 @@ async function run(): Promise<void> {
   const merchVis = workItemVisibilityWhere({ profileId: other.id, role: "merchant" })!;
   const merchSees = await prisma.workItem.count({ where: { AND: [{ title: { startsWith: PREFIX } }, merchVis] } });
   check("merchant sees only own client_confirmation tasks (0 here; no internal leak)", merchSees === 0, `count=${merchSees}`);
+
+  // 13) AI DRAFT -> ai_draft_review TASK (TASK-072) ----------------------------------------
+  console.log("\n[ai draft review task]");
+  check("create permission: operator/admin yes; collector/executor/merchant/ai_worker NO",
+    canCreateWorkItemType("operator", "ai_draft_review") && canCreateWorkItemType("admin", "ai_draft_review") &&
+    !canCreateWorkItemType("collector", "ai_draft_review") && !canCreateWorkItemType("executor", "ai_draft_review") &&
+    !canCreateWorkItemType("merchant", "ai_draft_review") && !canCreateWorkItemType("ai_worker", "ai_draft_review"));
+  const diagAiTask = getAiTask("diagnosis")!;
+  check("AI task -> target node map covers all 7 AI tasks + reverse lookup works",
+    AI_TASKS.every((t) => !!AI_TASK_TARGET_NODE[t.key]) &&
+    aiTaskForTargetNode("diagnosis")?.key === "diagnosis" &&
+    aiTaskForTargetNode("material_collection")?.key === "materials" &&
+    aiTaskForTargetNode(null) === null);
+
+  // capture the diagnosis node BEFORE the review flow — approval must NOT touch it.
+  const diagBefore = await prisma.merchantDiagnosis.findUnique({ where: { merchantId: full.id }, select: { diagnosisSummary: true, updatedAt: true } });
+
+  const aiDraftData = buildAiDraftReviewWorkItemData({
+    task: diagAiTask,
+    merchantId: full.id,
+    merchantName: full.name,
+    aiOutput: "SMOKE 草稿正文：主要问题判断（待验证）；无承诺。",
+    createdByProfileId: owner.id,
+    reviewerProfileId: owner.id,
+  });
+  const aiDraft = await prisma.workItem.create({ data: aiDraftData });
+  check("ai draft task created: type=ai_draft_review status=submitted", aiDraft.type === "ai_draft_review" && aiDraft.status === "submitted" && aiDraft.submittedAt !== null);
+  check("ai draft task: requiresAi=true, assignedRole=operator, priority normal", aiDraft.requiresAi === true && aiDraft.assignedRole === "operator" && aiDraft.priority === "normal");
+  check("ai draft task: targetNode=diagnosis, sourceNode=workspace", aiDraft.targetNode === "diagnosis" && aiDraft.sourceNode === "workspace");
+  check("ai draft task: resultSummary carries the draft; title carries task+merchant", (aiDraft.resultSummary ?? "").includes("SMOKE 草稿正文") && aiDraft.title.startsWith("审核 AI 草稿：商家诊断草稿") && aiDraft.title.includes(full.name));
+  check("ai draft task: requirements/acceptance carry review discipline (人工审核/待验证/不承诺)", (aiDraft.requirements ?? "").includes("待验证") && (aiDraft.requirements ?? "").includes("不会自动写入业务节点") && (aiDraft.acceptanceCriteria ?? "").includes("无增长承诺"));
+
+  // operator home stat: aiDraftSubmitted counts it (replicates getWorkItemStatsForUser query).
+  const opVis = workItemVisibilityWhere({ profileId: owner.id, role: "operator" })!;
+  const aiDraftSubmittedCount = await prisma.workItem.count({ where: { AND: [opVis, { type: "ai_draft_review", status: "submitted" }] } });
+  check("operator home stat counts the submitted AI draft", aiDraftSubmittedCount >= 1, `count=${aiDraftSubmittedCount}`);
+
+  // operator approves — and the merchant node stays untouched (no auto-save).
+  check("operator may approve the submitted ai draft", checkApproveWorkItem({ profileId: owner.id, role: "operator" }, aiDraft).allowed === true);
+  const aiApproved = await prisma.workItem.update({ where: { id: aiDraft.id }, data: { status: "approved", approvedAt: new Date(), reviewerProfileId: owner.id } });
+  check("ai draft transition submitted -> approved recorded", aiApproved.status === "approved" && aiApproved.approvedAt !== null);
+  const diagAfter = await prisma.merchantDiagnosis.findUnique({ where: { merchantId: full.id }, select: { diagnosisSummary: true, updatedAt: true } });
+  check("approval did NOT auto-write the diagnosis node (fields + updatedAt unchanged)",
+    diagAfter?.diagnosisSummary === diagBefore?.diagnosisSummary &&
+    diagAfter?.updatedAt.getTime() === diagBefore?.updatedAt.getTime());
 }
 
 async function main(): Promise<void> {
