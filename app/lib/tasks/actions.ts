@@ -1,0 +1,301 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import type { Role, WorkItemPriority, WorkItemType } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { requireUser, type CurrentUser } from "@/lib/auth/dal";
+import { assertMerchantWriteAccess } from "@/lib/merchants/permissions";
+import {
+  canCreateWorkItemType,
+  workItemVisibilityWhere,
+  checkStartWorkItem,
+  checkSubmitWorkItem,
+  checkRequestWorkItemChanges,
+  checkApproveWorkItem,
+  checkCompleteWorkItem,
+  checkCancelWorkItem,
+  checkAssignWorkItem,
+} from "@/lib/tasks/access";
+
+// ===== WorkItem server actions (TASK-071) =====
+// Every action: requireUser → visibility-aware fetch (no existence leak) → task permission
+// check (lib/tasks/access) → ONE explicit human-triggered status change. NO auto-advance to
+// a next stage, NO AI call, NO notification, NO side effect beyond the task row itself.
+
+export type WorkItemActionState = { error: string } | undefined;
+
+const TYPES: WorkItemType[] = [
+  "collector_intake", "review_intake", "ai_draft_review", "outsource_execution",
+  "outsource_review", "client_confirmation", "general_followup",
+];
+const PRIORITIES: WorkItemPriority[] = ["low", "normal", "high", "urgent"];
+// ai_worker is NOT assignable — AI tasks/AIDraft are out of scope (REVIEW_POLICY: AI 无审批权).
+const ASSIGNABLE_ROLES: Role[] = ["merchant", "collector", "operator", "executor", "admin"];
+
+const opt = (fd: FormData, k: string): string | null => {
+  const v = String(fd.get(k) ?? "").trim();
+  return v === "" ? null : v;
+};
+
+const ACCESS_FIELDS = {
+  id: true,
+  type: true,
+  status: true,
+  assignedProfileId: true,
+  createdByProfileId: true,
+  assignedRole: true,
+} as const;
+
+/** Visibility-aware fetch for actions: missing and no-access both yield the same error. */
+async function getActionableWorkItem(user: CurrentUser, workItemId: string) {
+  const vis = workItemVisibilityWhere(user);
+  if (vis === null) return null;
+  return prisma.workItem.findFirst({
+    where: { AND: [{ id: workItemId }, vis] },
+    select: ACCESS_FIELDS,
+  });
+}
+
+function revalidateTaskPaths(workItemId: string): void {
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/tasks");
+  revalidatePath(`/dashboard/tasks/${workItemId}`);
+}
+
+/** Create a task (collector → collector_intake only; operator → 运营任务; admin → 全部). */
+export async function createWorkItem(
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser(); // guard: unauthenticated -> /login
+
+  const type = formData.get("type") as WorkItemType;
+  if (!TYPES.includes(type)) return { error: "请选择有效的任务类型。" };
+  if (!canCreateWorkItemType(user.role, type)) {
+    return { error: `当前角色（${user.role}）无权创建该类型任务。` };
+  }
+
+  const title = opt(formData, "title");
+  if (!title) return { error: "请填写任务标题。" };
+
+  const merchantId = opt(formData, "merchantId");
+  if (merchantId) {
+    const accessError = await assertMerchantWriteAccess(user, merchantId);
+    if (accessError) return { error: accessError };
+  }
+
+  const priorityRaw = String(formData.get("priority") ?? "normal") as WorkItemPriority;
+  const priority = PRIORITIES.includes(priorityRaw) ? priorityRaw : "normal";
+
+  const assignedRoleRaw = opt(formData, "assignedRole") as Role | null;
+  if (assignedRoleRaw && !ASSIGNABLE_ROLES.includes(assignedRoleRaw)) {
+    return { error: "负责人角色无效（ai_worker 不可作为任务负责人）。" };
+  }
+
+  let dueAt: Date | null = null;
+  const dueRaw = opt(formData, "dueAt");
+  if (dueRaw) {
+    const d = new Date(dueRaw);
+    if (Number.isNaN(d.getTime())) return { error: "截止时间格式无效。" };
+    dueAt = d;
+  }
+
+  const created = await prisma.workItem.create({
+    data: {
+      type,
+      title,
+      merchantId,
+      description: opt(formData, "description"),
+      requirements: opt(formData, "requirements"),
+      acceptanceCriteria: opt(formData, "acceptanceCriteria"),
+      priority,
+      assignedRole: assignedRoleRaw,
+      requiresAi: formData.get("requiresAi") === "on",
+      requiresOutsource: formData.get("requiresOutsource") === "on",
+      requiresClientConfirmation: formData.get("requiresClientConfirmation") === "on",
+      dueAt,
+      createdByProfileId: user.profileId,
+    },
+  });
+
+  revalidateTaskPaths(created.id);
+  redirect(`/dashboard/tasks/${created.id}`);
+}
+
+/** 开始任务：not_started / assigned / changes_requested → in_progress（负责人触发）。 */
+export async function startWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  _formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState; void _formData;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkStartWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  await prisma.workItem.update({ where: { id: wi.id }, data: { status: "in_progress" } });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 提交审核：in_progress → submitted（可附成果摘要；等待人工审核，不自动通过）。 */
+export async function submitWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkSubmitWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  const resultSummary = opt(formData, "resultSummary");
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: {
+      status: "submitted",
+      submittedAt: new Date(),
+      ...(resultSummary ? { resultSummary } : {}),
+    },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 退回修改：submitted → changes_requested（operator/admin；必须附修改意见）。 */
+export async function requestWorkItemChanges(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkRequestWorkItemChanges(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  const reviewNote = opt(formData, "reviewNote");
+  if (!reviewNote) return { error: "退回必须填写修改意见，让负责人知道改什么。" };
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { status: "changes_requested", reviewNote, reviewerProfileId: user.profileId },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 审核通过：submitted → approved（operator/admin 人工判断；不自动完成、不自动进入下一阶段）。 */
+export async function approveWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkApproveWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  const reviewNote = opt(formData, "reviewNote");
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: {
+      status: "approved",
+      approvedAt: new Date(),
+      reviewerProfileId: user.profileId,
+      ...(reviewNote ? { reviewNote } : {}),
+    },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 标记完成：approved → completed（operator/admin）。 */
+export async function completeWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  _formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState; void _formData;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkCompleteWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { status: "completed", completedAt: new Date() },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 取消任务：仅 admin；completed / cancelled 不可取消。 */
+export async function cancelWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  _formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState; void _formData;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkCancelWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { status: "cancelled", cancelledAt: new Date() },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 分配负责人：admin 任意任务；operator 仅外包执行任务（目标必须是 executor）。 */
+export async function assignWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkAssignWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  const assignedProfileId = opt(formData, "assignedProfileId");
+  if (!assignedProfileId) return { error: "请选择要分配的负责人。" };
+  const target = await prisma.userProfile.findUnique({
+    where: { id: assignedProfileId },
+    select: { id: true, role: true, status: true },
+  });
+  if (!target || target.status !== "active") return { error: "目标账号不存在或未启用。" };
+  if (target.role === "ai_worker") return { error: "ai_worker 不可作为任务负责人。" };
+  if (user.role === "operator" && target.role !== "executor") {
+    return { error: "operator 分配外包任务时，负责人必须是 executor。" };
+  }
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { assignedProfileId: target.id, assignedRole: target.role, status: "assigned" },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}

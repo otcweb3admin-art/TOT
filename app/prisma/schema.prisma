@@ -111,6 +111,11 @@ model UserProfile {
   handoffsSubmitted MerchantStageHandoff[] @relation("HandoffSubmittedBy")
   handoffsReceived  MerchantStageHandoff[] @relation("HandoffReceivedBy")
   handoffsReviewed  MerchantStageHandoff[] @relation("HandoffReviewedBy")
+
+  // P4-002 (TASK-071): back-relations for WorkItem FKs.
+  workItemsAssigned WorkItem[] @relation("WorkItemAssignedProfile")
+  workItemsCreated  WorkItem[] @relation("WorkItemCreatedByProfile")
+  workItemsReviewed WorkItem[] @relation("WorkItemReviewerProfile")
 }
 
 // ===== P2-001 Merchant Intake Foundation =====
@@ -183,6 +188,9 @@ model Merchant {
 
   // P2-022: many lightweight stage-handoff records (Phase C).
   stageHandoffs MerchantStageHandoff[]
+
+  // P4-002 (TASK-071): many work items (unified Task Center).
+  workItems WorkItem[]
 
   @@index([ownerProfileId])
   @@index([createdByProfileId])
@@ -727,4 +735,94 @@ model MerchantStageHandoff {
   reviewedAt DateTime?
 
   @@index([merchantId])
+}
+
+// ===== P4-002 WorkItem / Task Center Foundation (TASK-071) =====
+// Unified MINIMAL task model so work can be assigned / submitted / reviewed / returned /
+// completed inside the system (Phase 2 of account-role-workflow-system-design-v1). This is
+// NOT AIDraft, NOT outsource/client file upload, NOT notifications, NOT MVS, NOT Phase D
+// review locking, NOT workflow automation. Status transitions are HUMAN-triggered server
+// actions only — nothing auto-advances, AI has no approval right (REVIEW_POLICY).
+
+enum WorkItemType {
+  collector_intake // 采集原始资料
+  review_intake // 审核采集资料
+  ai_draft_review // 审核 AI 草稿
+  outsource_execution // 外包 / 执行任务
+  outsource_review // 审核外包成果
+  client_confirmation // 客户确认事项
+  general_followup // 通用跟进任务
+}
+
+enum WorkItemStatus {
+  not_started // 未开始
+  in_progress // 进行中
+  submitted // 已提交，等待审核
+  changes_requested // 已退回，需修改
+  approved // 审核通过（人工，不自动完成）
+  assigned // 已分配
+  completed // 已完成
+  cancelled // 已取消
+}
+
+enum WorkItemPriority {
+  low // 低
+  normal // 普通
+  high // 高
+  urgent // 紧急
+}
+
+model WorkItem {
+  id String @id @default(uuid())
+
+  // Optional merchant anchor — merchant-bound tasks cascade with their merchant.
+  merchantId String?
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  type     WorkItemType
+  status   WorkItemStatus   @default(not_started)
+  priority WorkItemPriority @default(normal)
+
+  title              String
+  description        String?
+  requirements       String?
+  acceptanceCriteria String?
+  resultSummary      String? // 执行人提交的成果摘要
+  reviewNote         String? // 审核意见 / 退回原因（人工填写）
+
+  // Optional stage anchors (reuse MerchantStageNode; soft context, no node mutation).
+  sourceNode MerchantStageNode?
+  targetNode MerchantStageNode?
+
+  // Assignment: a role queue and/or a concrete profile. All reference UserProfile.id.
+  assignedRole      Role?
+  assignedProfileId String?
+  assignedProfile   UserProfile? @relation("WorkItemAssignedProfile", fields: [assignedProfileId], references: [id])
+
+  createdByProfileId String?
+  createdByProfile   UserProfile? @relation("WorkItemCreatedByProfile", fields: [createdByProfileId], references: [id])
+
+  reviewerProfileId String?
+  reviewerProfile   UserProfile? @relation("WorkItemReviewerProfile", fields: [reviewerProfileId], references: [id])
+
+  requiresAi                 Boolean @default(false)
+  requiresOutsource          Boolean @default(false)
+  requiresClientConfirmation Boolean @default(false)
+
+  dueAt       DateTime?
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([merchantId])
+  @@index([type])
+  @@index([status])
+  @@index([assignedRole])
+  @@index([assignedProfileId])
+  @@index([createdByProfileId])
+  @@index([reviewerProfileId])
 }

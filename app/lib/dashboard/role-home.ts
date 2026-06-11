@@ -56,7 +56,7 @@ export const ROLE_HOME: Record<Role, RoleHome> = {
       "不承诺增长结果",
       "不绕过证据纪律",
     ],
-    nextHint: "通过 商家列表 / 工作台 / AI 工作台 推进；正式审核队列将在 Task 模型上线后启用。",
+    nextHint: "优先处理「任务中心」里的待审核任务（采集 / AI 草稿 / 外包成果 / 客户确认）；商家节点在商家工作台推进。",
   },
   executor: {
     workspaceName: "外包 / 执行工作台",
@@ -70,7 +70,7 @@ export const ROLE_HOME: Record<Role, RoleHome> = {
       "不直接联系客户（除非被授权）",
       "不修改商家核心节点结论",
     ],
-    nextHint: "正式外包任务模型尚未启用；启用后此处只显示分配给你的任务、要求与验收标准。",
+    nextHint: "打开「任务中心」查看分配给你的任务、要求与验收标准；提交后等待审核，被退回按意见修改重交。",
   },
   admin: {
     workspaceName: "平台管理工作台",

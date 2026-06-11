@@ -5,6 +5,7 @@ import { roleLabel } from "@/lib/merchants/role-access";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "首页" },
+  { href: "/dashboard/tasks", label: "任务中心" },
   { href: "/dashboard/merchants", label: "商家管理" },
   { href: "/dashboard/merchants/intake", label: "接入向导" },
   { href: "/dashboard/handoffs", label: "交接中心" },
@@ -14,13 +15,19 @@ const NAV_ITEMS = [
 
 // TASK-070: per-role nav visibility — DISPLAY filtering only (server-side permission
 // enforcement is unchanged; direct URLs still go through the existing guards).
-// merchant / ai_worker / executor see only their own workspace home; collector sees the
+// merchant / ai_worker see only the workspace home (merchant reaches 我的事项 from the
+// workspace card); executor gets home + 任务中心 (TASK-071); collector adds the
 // intake-related entries; operator / admin see everything.
 const NAV_HREFS_BY_ROLE: Record<Role, string[]> = {
   merchant: ["/dashboard"],
   ai_worker: ["/dashboard"],
-  executor: ["/dashboard"],
-  collector: ["/dashboard", "/dashboard/merchants", "/dashboard/merchants/intake"],
+  executor: ["/dashboard", "/dashboard/tasks"],
+  collector: [
+    "/dashboard",
+    "/dashboard/tasks",
+    "/dashboard/merchants",
+    "/dashboard/merchants/intake",
+  ],
   operator: NAV_ITEMS.map((i) => i.href),
   admin: NAV_ITEMS.map((i) => i.href),
 };

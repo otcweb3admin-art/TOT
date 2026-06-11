@@ -4,6 +4,7 @@ import { roleLabel } from "@/lib/merchants/role-access";
 import { getRoleHome, type RoleHome } from "@/lib/dashboard/role-home";
 import { findDemoMerchant } from "@/lib/dashboard/home";
 import { listMerchants } from "@/lib/merchants/data";
+import { getWorkItemStatsForUser, type WorkItemStats } from "@/lib/tasks/data";
 import { QuickActionCard } from "@/components/dashboard/quick-action-card";
 import { OnboardingGuide } from "@/components/dashboard/onboarding-guide";
 import { RoleBoundaryCard } from "@/components/dashboard/role-boundary-card";
@@ -13,9 +14,16 @@ import { PageHeader } from "@/components/ui/page-header";
 // Always render at request time (reads session); never prerender at build.
 export const dynamic = "force-dynamic";
 
-const PENDING_TASK_MODEL = "将在 Task 模型上线后启用";
-
 type MerchantLite = { id: string; name: string; createdAt: Date };
+
+/** 任务中心链接（队列行内复用）。 */
+function TasksLink({ label = "去任务中心处理" }: { label?: string }) {
+  return (
+    <Link href="/dashboard/tasks" className="underline underline-offset-2">
+      {label}
+    </Link>
+  );
+}
 
 /** 角色身份区（所有工作台共用） */
 function IdentityCard({ user, home }: { user: CurrentUser; home: RoleHome }) {
@@ -54,8 +62,9 @@ function SystemStatusCard() {
   );
 }
 
-/** merchant → 客户工作台（V1 占位 + 可读入口；不暴露任何内部入口） */
-function CustomerWorkspace() {
+/** merchant → 客户工作台（V1：客户确认事项实时；其余仍为占位，不暴露内部入口） */
+function CustomerWorkspace({ stats }: { stats: WorkItemStats | null }) {
+  const confirmCount = stats?.reviewQueue.clientConfirmationOpen ?? 0;
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
@@ -66,13 +75,21 @@ function CustomerWorkspace() {
             { label: "已完成事项", value: "—" },
             { label: "下一步", value: "项目启动后由负责人同步" },
           ]}
-          note="当前版本客户门户为 V1 占位，客户绑定商家和上传资料将在后续 Task 模型 / ClientRequest 中实现。"
+          note="当前版本客户门户为 V1 占位，客户绑定商家和上传资料将在后续版本实现。"
         />
         <RoleQueuePreview
           title="需要我配合的事项"
           items={[
             { label: "待补充资料", value: "暂无（项目启动后显示）" },
-            { label: "待确认内容", value: "暂无（项目启动后显示）" },
+            {
+              label: "待确认内容",
+              value:
+                confirmCount > 0 ? (
+                  <TasksLink label={`${confirmCount} 项待确认 — 查看我的事项`} />
+                ) : (
+                  "暂无（有待确认事项时显示在这里）"
+                ),
+            },
           ]}
           note="有待确认内容时，确认通过后我们才会进入下一步。"
         />
@@ -94,11 +111,15 @@ function CustomerWorkspace() {
 function CollectorWorkspace({
   merchants,
   demoHref,
+  stats,
 }: {
   merchants: MerchantLite[];
   demoHref: string | null;
+  stats: WorkItemStats | null;
 }) {
   const recent = merchants.slice(0, 3);
+  const s = stats?.byStatus;
+  const myOpen = (s?.not_started ?? 0) + (s?.assigned ?? 0) + (s?.in_progress ?? 0);
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
@@ -129,18 +150,27 @@ function CollectorWorkspace({
           note="先用 Field Pack 线下采集，再回系统按接入向导录入；不知道写「待补充」。"
         />
         <RoleQueuePreview
-          title="提交与退回"
+          title="我的任务（实时）"
           items={[
-            { label: "已提交待审核", value: PENDING_TASK_MODEL },
-            { label: "被退回修改", value: PENDING_TASK_MODEL },
-            { label: "待补充资料", value: "在各商家工作台五器官摘要中查看缺口" },
+            { label: "我的采集任务", value: `${myOpen} 个（未开始/已分配/进行中）` },
+            { label: "已提交待审核", value: `${s?.submitted ?? 0} 个` },
+            {
+              label: "被退回修改",
+              value:
+                (s?.changes_requested ?? 0) > 0 ? (
+                  <TasksLink label={`${s?.changes_requested} 个 — 按意见修改重交`} />
+                ) : (
+                  "0 个"
+                ),
+            },
           ]}
-          note="正式提交/退回队列将在 Task 模型上线后启用；现阶段采集完成后线下通知审核员。"
+          note="采集任务在任务中心创建与提交；提交后由人工审核，通过/退回会显示在这里。"
         />
       </div>
       <section>
         <h2 className="mb-2 text-sm font-medium text-zinc-500">快捷操作</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <QuickActionCard href="/dashboard/tasks" title="任务中心" description="我的采集任务：开始 / 提交 / 看退回意见" hint="任务驱动从这里" />
           <QuickActionCard href="/dashboard/merchants/new" title="新建商家" description="录入一个商家主体（真实商家需负责人授权）" hint="采集第一步" />
           <QuickActionCard href="/dashboard/merchants/intake" title="商家接入向导" description="按 6 步顺序录入资料" />
           <QuickActionCard href="/dashboard/merchants" title="商家列表" description="查看我可见的商家，继续录入" />
@@ -159,22 +189,33 @@ function CollectorWorkspace({
 function ReviewerWorkspace({
   merchants,
   demoHref,
+  stats,
 }: {
   merchants: MerchantLite[];
   demoHref: string | null;
+  stats: WorkItemStats | null;
 }) {
+  const q = stats?.reviewQueue;
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
         <RoleQueuePreview
-          title="审核队列"
+          title="审核队列（实时）"
           items={[
-            { label: "待审核采集包", value: PENDING_TASK_MODEL },
-            { label: "待审核 AI 草稿", value: PENDING_TASK_MODEL },
-            { label: "待审核外包成果", value: PENDING_TASK_MODEL },
-            { label: "待客户确认", value: PENDING_TASK_MODEL },
+            {
+              label: "待审核任务",
+              value:
+                (q?.submittedTotal ?? 0) > 0 ? (
+                  <TasksLink label={`${q?.submittedTotal} 个 — 去任务中心审核`} />
+                ) : (
+                  "0 个"
+                ),
+            },
+            { label: "其中 AI 草稿审核", value: `${q?.aiDraftSubmitted ?? 0} 个` },
+            { label: "其中外包成果审核", value: `${q?.outsourceSubmitted ?? 0} 个` },
+            { label: "客户确认事项（未完成）", value: `${q?.clientConfirmationOpen ?? 0} 个` },
           ]}
-          note="正式审核队列将在 Task 模型上线后启用；现阶段请通过 商家列表 / 工作台 / AI 工作台 推进。"
+          note="审核 / 退回 / 完成均为人工操作；审核通过不等于自动进入下一阶段。"
         />
         <RoleQueuePreview
           title="进行中的商家"
@@ -191,7 +232,8 @@ function ReviewerWorkspace({
       <section>
         <h2 className="mb-2 text-sm font-medium text-zinc-500">快捷操作</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <QuickActionCard href="/dashboard/merchants" title="商家列表" description="进入详情或工作台，推进节点" hint="日常推进从这里" />
+          <QuickActionCard href="/dashboard/tasks" title="任务中心" description="待审核任务：通过 / 退回 / 完成 / 分配外包" hint="审核从这里" />
+          <QuickActionCard href="/dashboard/merchants" title="商家列表" description="进入详情或工作台，推进节点" />
           <QuickActionCard href="/dashboard/ai-workbench" title="AI 工作台" description="生成草稿 → 人工审核后保存（不自动保存）" />
           <QuickActionCard href="/dashboard/handoffs" title="交接中心" description="查看节点交接记录（received ≠ approved）" />
           <QuickActionCard href="/dashboard/merchants/intake" title="商家接入向导" description="6 步录入顺序参考" />
@@ -207,20 +249,31 @@ function ReviewerWorkspace({
   );
 }
 
-/** executor → 外包 / 执行工作台（V1 占位） */
-function OutsourceWorkspace() {
+/** executor → 外包 / 执行工作台（任务实时；仅显示分配给自己的外包任务） */
+function OutsourceWorkspace({ stats }: { stats: WorkItemStats | null }) {
+  const s = stats?.byStatus;
+  const pending = (s?.not_started ?? 0) + (s?.assigned ?? 0);
   return (
     <>
       <RoleQueuePreview
-        title="我的任务"
+        title="我的任务（实时）"
         items={[
-          { label: "待开始", value: PENDING_TASK_MODEL },
-          { label: "进行中", value: PENDING_TASK_MODEL },
-          { label: "已提交待审核", value: PENDING_TASK_MODEL },
-          { label: "被退回修改", value: PENDING_TASK_MODEL },
-          { label: "已完成", value: PENDING_TASK_MODEL },
+          { label: "待开始", value: `${pending} 个` },
+          { label: "进行中", value: `${s?.in_progress ?? 0} 个` },
+          { label: "已提交待审核", value: `${s?.submitted ?? 0} 个` },
+          {
+            label: "被退回修改",
+            value:
+              (s?.changes_requested ?? 0) > 0 ? (
+                <TasksLink label={`${s?.changes_requested} 个 — 按意见修改重交`} />
+              ) : (
+                "0 个"
+              ),
+          },
+          { label: "已完成", value: `${s?.completed ?? 0} 个` },
+          { label: "入口", value: <TasksLink label="打开任务中心" /> },
         ]}
-        note="当前版本尚未启用正式外包任务模型。外包人员未来只会看到分配给自己的任务，不会看到完整商家经营数据。"
+        note="这里只显示分配给你的外包任务（要求 + 验收标准），不显示商家完整经营数据与其它外包任务。"
       />
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
@@ -247,15 +300,32 @@ function OutsourceWorkspace() {
 /** admin → 平台管理工作台 */
 function AdminWorkspace({
   merchants,
+  stats,
 }: {
   merchants: MerchantLite[];
+  stats: WorkItemStats | null;
 }) {
   const demoCount = merchants.filter((m) => m.name.startsWith("DEMO_")).length;
   const uatCount = merchants.filter((m) => m.name.startsWith("UAT_")).length;
   const realCount = merchants.length - demoCount - uatCount;
+  const abnormal = (stats?.byStatus.changes_requested ?? 0) + (stats?.overdueOpen ?? 0);
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
+        <RoleQueuePreview
+          title="全局任务统计（实时）"
+          items={[
+            { label: "全部任务", value: `${stats?.total ?? 0} 个` },
+            { label: "待审核", value: `${stats?.byStatus.submitted ?? 0} 个` },
+            { label: "高优先级（未完成）", value: `${stats?.highPriorityOpen ?? 0} 个` },
+            {
+              label: "异常（退回 / 逾期）",
+              value:
+                abnormal > 0 ? <TasksLink label={`${abnormal} 个 — 去任务中心查看`} /> : "0 个",
+            },
+          ]}
+          note="admin 是平台管理视角；日常审核请用 operator 账号在任务中心处理。"
+        />
         <RoleQueuePreview
           title="数据边界（实时）"
           items={[
@@ -276,6 +346,7 @@ function AdminWorkspace({
       <section>
         <h2 className="mb-2 text-sm font-medium text-zinc-500">全局入口</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <QuickActionCard href="/dashboard/tasks" title="任务中心" description="全部任务（admin 全量可见）" />
           <QuickActionCard href="/dashboard/merchants" title="商家管理" description="全部商家（admin 全量可见）" />
           <QuickActionCard href="/dashboard/launch-readiness" title="上线前检查" description="系统状态与试点前核对" />
           <QuickActionCard href="/dashboard/handoffs" title="交接中心" description="全部交接记录" />
@@ -312,12 +383,15 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const home = getRoleHome(user.role);
 
-  // 内部数据仅对需要的角色加载（merchant / ai_worker 不读商家数据）。
+  // 商家数据仅对需要的角色加载（merchant / ai_worker 不读商家数据）；任务统计按角色
+  // 可见性过滤（TASK-071），ai_worker 返回 null。
   const needsData =
     user.role === "collector" || user.role === "operator" || user.role === "admin";
-  const [demo, merchants] = needsData
-    ? await Promise.all([findDemoMerchant(user), listMerchants(user)])
-    : [null, []];
+  const [demo, merchants, stats] = await Promise.all([
+    needsData ? findDemoMerchant(user) : null,
+    needsData ? listMerchants(user) : [],
+    user.role === "ai_worker" ? null : getWorkItemStatsForUser(user),
+  ]);
   const demoHref = demo ? `/dashboard/merchants/${demo.id}/workspace` : null;
 
   return (
@@ -339,15 +413,15 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      {user.role === "merchant" && <CustomerWorkspace />}
+      {user.role === "merchant" && <CustomerWorkspace stats={stats} />}
       {user.role === "collector" && (
-        <CollectorWorkspace merchants={merchants} demoHref={demoHref} />
+        <CollectorWorkspace merchants={merchants} demoHref={demoHref} stats={stats} />
       )}
       {user.role === "operator" && (
-        <ReviewerWorkspace merchants={merchants} demoHref={demoHref} />
+        <ReviewerWorkspace merchants={merchants} demoHref={demoHref} stats={stats} />
       )}
-      {user.role === "executor" && <OutsourceWorkspace />}
-      {user.role === "admin" && <AdminWorkspace merchants={merchants} />}
+      {user.role === "executor" && <OutsourceWorkspace stats={stats} />}
+      {user.role === "admin" && <AdminWorkspace merchants={merchants} stats={stats} />}
       {user.role === "ai_worker" && <AiWorkerNotice />}
 
       <RoleBoundaryCard items={home.boundaries} />

@@ -31,12 +31,33 @@ import { AI_TASKS, getAiTask } from "@/lib/ai-workbench/tasks";
 import { ROLE_HOME, getRoleHome } from "@/lib/dashboard/role-home";
 import { buildAiMerchantContext } from "@/lib/ai-workbench/context";
 import { buildAiPrompt } from "@/lib/ai-workbench/prompts";
+import {
+  canCreateWorkItemType,
+  workItemVisibilityWhere,
+  checkStartWorkItem,
+  checkSubmitWorkItem,
+  checkApproveWorkItem,
+  checkRequestWorkItemChanges,
+  checkCompleteWorkItem,
+  checkCancelWorkItem,
+} from "@/lib/tasks/access";
+import {
+  WORK_ITEM_TYPES,
+  WORK_ITEM_STATUSES,
+  WORK_ITEM_PRIORITIES,
+  WORK_ITEM_TYPE_LABELS,
+  WORK_ITEM_STATUS_LABELS,
+  WORK_ITEM_PRIORITY_LABELS,
+} from "@/lib/tasks/display";
 
 const PREFIX = "SMOKE_TEST_";
 
 let pass = 0;
 let fail = 0;
 let cleanupOk = false;
+// TASK-071: DEMO_/UAT_ isolation — counts captured in run(), re-checked in cleanup().
+let demoMerchantsBefore = -1;
+let uatMerchantsBefore = -1;
 
 function check(name: string, ok: boolean, detail = ""): void {
   if (ok) pass++;
@@ -46,6 +67,16 @@ function check(name: string, ok: boolean, detail = ""): void {
 
 async function cleanup(): Promise<void> {
   try {
+    // TASK-071: work items first (merchant-less smoke tasks are matched by title prefix;
+    // merchant-bound ones would cascade anyway). STRICT prefix filters only.
+    const delW = await prisma.workItem.deleteMany({
+      where: {
+        OR: [
+          { title: { startsWith: PREFIX } },
+          { merchant: { name: { startsWith: PREFIX } } },
+        ],
+      },
+    });
     // Merchant delete cascades to its 1-1 assets (onDelete: Cascade). STRICT prefix filter
     // so real merchant data is never touched.
     const delM = await prisma.merchant.deleteMany({
@@ -61,9 +92,16 @@ async function cleanup(): Promise<void> {
     const handoffResidue = await prisma.merchantStageHandoff.count({
       where: { merchant: { name: { startsWith: PREFIX } } },
     });
-    cleanupOk = remain === 0 && handoffResidue === 0;
+    const workItemResidue = await prisma.workItem.count({
+      where: { title: { startsWith: PREFIX } },
+    });
+    // TASK-071: DEMO_/UAT_ untouched by the smoke run + cleanup.
+    const demoAfter = await prisma.merchant.count({ where: { name: { startsWith: "DEMO_" } } });
+    const uatAfter = await prisma.merchant.count({ where: { name: { startsWith: "UAT_" } } });
+    const isolationOk = demoAfter === demoMerchantsBefore && uatAfter === uatMerchantsBefore;
+    cleanupOk = remain === 0 && handoffResidue === 0 && workItemResidue === 0 && isolationOk;
     console.log(
-      `\n[cleanup] deleted merchants=${delM.count} temp-profiles=${delP.count}; remaining ${PREFIX} merchants=${remain} handoffs=${handoffResidue} -> ${cleanupOk ? "CLEAN" : "DIRTY"}`,
+      `\n[cleanup] deleted merchants=${delM.count} temp-profiles=${delP.count} work-items=${delW.count}; remaining ${PREFIX} merchants=${remain} handoffs=${handoffResidue} work-items=${workItemResidue}; DEMO ${demoMerchantsBefore}->${demoAfter} UAT ${uatMerchantsBefore}->${uatAfter} ${isolationOk ? "UNTOUCHED" : "CHANGED!"} -> ${cleanupOk ? "CLEAN" : "DIRTY"}`,
     );
   } catch (e) {
     console.error("[cleanup] error:", e instanceof Error ? e.message : e);
@@ -84,6 +122,10 @@ async function run(): Promise<void> {
     missingEnv.length === 0,
     missingEnv.length ? `MISSING: ${missingEnv.join(",")}` : "all required keys set",
   );
+
+  // TASK-071: capture DEMO_/UAT_ counts up-front — cleanup() re-checks they are untouched.
+  demoMerchantsBefore = await prisma.merchant.count({ where: { name: { startsWith: "DEMO_" } } });
+  uatMerchantsBefore = await prisma.merchant.count({ where: { name: { startsWith: "UAT_" } } });
 
   // 1) auth prerequisite: at least one UserProfile exists (acts as the owner actor).
   const owner = await prisma.userProfile.findFirst({ orderBy: { createdAt: "asc" } });
@@ -286,6 +328,86 @@ async function run(): Promise<void> {
   check("ai_worker is NOT a human workspace", getRoleHome("ai_worker").humanWorkspace === false && ALL_ROLES.filter((r) => r !== "ai_worker").every((r) => getRoleHome(r).humanWorkspace === true));
   check("operator maps to 人工审核 (not generic ops)", getRoleHome("operator").workspaceName.includes("人工审核"));
   check("admin maps to 平台管理; merchant/collector/executor named sensibly", getRoleHome("admin").workspaceName.includes("平台管理") && getRoleHome("merchant").workspaceName.includes("客户") && getRoleHome("collector").workspaceName.includes("采集") && getRoleHome("executor").workspaceName.includes("外包"));
+
+  // 12) WORK ITEM / TASK CENTER (TASK-071) -----------------------------------------------
+  console.log("\n[work item / task center]");
+  // enum + display coverage: 7 types / 8 statuses / 4 priorities all labeled in Chinese.
+  check("work-item enums exist with full 中文 display maps (7 types / 8 statuses / 4 priorities)",
+    WORK_ITEM_TYPES.length === 7 && WORK_ITEM_STATUSES.length === 8 && WORK_ITEM_PRIORITIES.length === 4 &&
+    WORK_ITEM_TYPES.every((t) => (WORK_ITEM_TYPE_LABELS[t] ?? "").length > 0) &&
+    WORK_ITEM_STATUSES.every((s) => (WORK_ITEM_STATUS_LABELS[s] ?? "").length > 0) &&
+    WORK_ITEM_PRIORITIES.every((p) => (WORK_ITEM_PRIORITY_LABELS[p] ?? "").length > 0));
+
+  // creation rules per role.
+  check("collector may create collector_intake ONLY",
+    canCreateWorkItemType("collector", "collector_intake") &&
+    !canCreateWorkItemType("collector", "outsource_execution") &&
+    !canCreateWorkItemType("collector", "client_confirmation"));
+  check("operator may create review/ai-draft/outsource/client/followup (not collector_intake)",
+    (["review_intake", "ai_draft_review", "outsource_execution", "outsource_review", "client_confirmation", "general_followup"] as const).every((t) => canCreateWorkItemType("operator", t)) &&
+    !canCreateWorkItemType("operator", "collector_intake"));
+  check("admin may create ALL types; merchant/executor/ai_worker may create NONE",
+    WORK_ITEM_TYPES.every((t) => canCreateWorkItemType("admin", t)) &&
+    WORK_ITEM_TYPES.every((t) => !canCreateWorkItemType("merchant", t) && !canCreateWorkItemType("executor", t) && !canCreateWorkItemType("ai_worker", t)));
+
+  // create SMOKE_TEST_ tasks (strict prefix; cleaned in cleanup()).
+  const taskIntake = await prisma.workItem.create({
+    data: { title: `${PREFIX}TASK_INTAKE_${ts}`, type: "collector_intake", merchantId: full.id, createdByProfileId: owner.id, assignedRole: "collector" },
+  });
+  check("work item created (defaults: not_started / normal)", taskIntake.status === "not_started" && taskIntake.priority === "normal");
+
+  // collector lifecycle on own intake task: start -> submit; never approve.
+  const ownerAsCollector = { profileId: owner.id, role: "collector" as const };
+  const ownerAsOperator = { profileId: owner.id, role: "operator" as const };
+  check("collector (creator) may start own intake task", checkStartWorkItem(ownerAsCollector, taskIntake).allowed === true);
+  const intakeInProgress = await prisma.workItem.update({ where: { id: taskIntake.id }, data: { status: "in_progress" } });
+  check("collector may submit own in-progress intake task", checkSubmitWorkItem(ownerAsCollector, intakeInProgress).allowed === true);
+  const intakeSubmitted = await prisma.workItem.update({ where: { id: taskIntake.id }, data: { status: "submitted", submittedAt: new Date() } });
+  check("collector CANNOT approve a submitted task", checkApproveWorkItem(ownerAsCollector, intakeSubmitted).allowed === false);
+  check("operator CAN approve / request changes on submitted", checkApproveWorkItem(ownerAsOperator, intakeSubmitted).allowed === true && checkRequestWorkItemChanges(ownerAsOperator, intakeSubmitted).allowed === true);
+  const intakeApproved = await prisma.workItem.update({ where: { id: taskIntake.id }, data: { status: "approved", approvedAt: new Date(), reviewerProfileId: owner.id } });
+  check("DB transition submitted -> approved recorded", intakeApproved.status === "approved" && intakeApproved.reviewerProfileId === owner.id);
+  check("complete: operator allowed from approved ONLY", checkCompleteWorkItem(ownerAsOperator, intakeApproved).allowed === true && checkCompleteWorkItem(ownerAsOperator, intakeSubmitted).allowed === false);
+  check("cancel: admin only (operator/collector denied)", checkCancelWorkItem({ profileId: owner.id, role: "admin" }, intakeApproved).allowed === true && checkCancelWorkItem(ownerAsOperator, intakeApproved).allowed === false && checkCancelWorkItem(ownerAsCollector, intakeApproved).allowed === false);
+
+  // executor visibility: ONLY outsource_execution assigned to self.
+  const exec1 = await prisma.userProfile.create({
+    data: { authUserId: randomUUID(), email: `${PREFIX}exec1_${ts}@smoke.local`, role: "executor", status: "active" },
+  });
+  const exec2 = await prisma.userProfile.create({
+    data: { authUserId: randomUUID(), email: `${PREFIX}exec2_${ts}@smoke.local`, role: "executor", status: "active" },
+  });
+  const taskOutA = await prisma.workItem.create({
+    data: { title: `${PREFIX}TASK_OUT_A_${ts}`, type: "outsource_execution", merchantId: full.id, status: "assigned", assignedRole: "executor", assignedProfileId: exec1.id, createdByProfileId: owner.id },
+  });
+  await prisma.workItem.create({
+    data: { title: `${PREFIX}TASK_OUT_B_${ts}`, type: "outsource_execution", merchantId: full.id, status: "assigned", assignedRole: "executor", assignedProfileId: exec2.id, createdByProfileId: owner.id },
+  });
+  const exec1User = { profileId: exec1.id, role: "executor" as const };
+  const exec1Vis = workItemVisibilityWhere(exec1User);
+  const exec1Sees = await prisma.workItem.findMany({ where: { AND: [{ title: { startsWith: PREFIX } }, exec1Vis!] } });
+  check("executor sees ONLY the outsource task assigned to himself", exec1Sees.length === 1 && exec1Sees[0].id === taskOutA.id, `count=${exec1Sees.length}`);
+  check("executor does NOT see other executors' tasks nor internal review tasks", exec1Sees.every((w) => w.type === "outsource_execution" && w.assignedProfileId === exec1.id));
+  check("no existence leak: executor lookup of internal task returns null", (await prisma.workItem.findFirst({ where: { AND: [{ id: taskIntake.id }, exec1Vis!] } })) === null);
+  check("executor may start/submit own assigned task but never approve",
+    checkStartWorkItem(exec1User, taskOutA).allowed === true &&
+    checkSubmitWorkItem(exec1User, { ...taskOutA, status: "in_progress" }).allowed === true &&
+    checkApproveWorkItem(exec1User, { ...taskOutA, status: "submitted" }).allowed === false);
+
+  // ai_worker: sees nothing, operates nothing.
+  const aiUser = { profileId: other.id, role: "ai_worker" as const };
+  check("ai_worker sees NO tasks (visibility null) and cannot start/approve",
+    workItemVisibilityWhere(aiUser) === null &&
+    checkStartWorkItem(aiUser, taskOutA).allowed === false &&
+    checkApproveWorkItem(aiUser, intakeSubmitted).allowed === false);
+
+  // admin sees all; merchant sees only own client_confirmation (none here).
+  const adminVis = workItemVisibilityWhere({ profileId: other.id, role: "admin" })!;
+  const adminSees = await prisma.workItem.count({ where: { AND: [{ title: { startsWith: PREFIX } }, adminVis] } });
+  check("admin sees ALL smoke tasks", adminSees === 3, `count=${adminSees}`);
+  const merchVis = workItemVisibilityWhere({ profileId: other.id, role: "merchant" })!;
+  const merchSees = await prisma.workItem.count({ where: { AND: [{ title: { startsWith: PREFIX } }, merchVis] } });
+  check("merchant sees only own client_confirmation tasks (0 here; no internal leak)", merchSees === 0, `count=${merchSees}`);
 }
 
 async function main(): Promise<void> {
