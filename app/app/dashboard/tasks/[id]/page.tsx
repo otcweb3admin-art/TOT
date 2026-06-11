@@ -6,11 +6,13 @@ import { roleLabel } from "@/lib/merchants/role-access";
 import {
   checkStartWorkItem,
   checkSubmitWorkItem,
+  checkSubmitOutsourceResult,
   checkRequestWorkItemChanges,
   checkApproveWorkItem,
   checkCompleteWorkItem,
   checkCancelWorkItem,
   checkAssignWorkItem,
+  canReviewWorkItems,
 } from "@/lib/tasks/access";
 import { getWorkItemByIdForUser, listAssignableProfiles } from "@/lib/tasks/data";
 import { WORK_ITEM_TYPE_LABELS } from "@/lib/tasks/display";
@@ -21,6 +23,7 @@ import {
   TaskFlagBadges,
 } from "@/components/tasks/work-item-badges";
 import { WorkItemActions } from "@/components/tasks/work-item-actions";
+import { OutsourceResultForm } from "@/components/tasks/outsource-result-form";
 import { formatDateTime } from "@/components/merchants/format";
 import { PageHeader } from "@/components/ui/page-header";
 import { btnSecondary } from "@/components/ui/button";
@@ -119,6 +122,88 @@ function AiDraftReviewPanel({
   );
 }
 
+const OUTSOURCE_REMINDERS = [
+  "你只能看到分配给你的任务。",
+  "你不能查看完整客户经营数据。",
+  "你提交的是待审核成果，不代表最终通过。",
+  "审核员通过后，成果才能进入下一步。",
+];
+
+const OUTSOURCE_REVIEW_REMINDERS = [
+  "请根据验收标准检查外包成果。",
+  "未确认版权 / 素材授权 / 平台风险前，不要通过。",
+  "通过不等于发布，也不等于客户确认。",
+];
+
+/** outsource_execution 专属面板 (TASK-073)：外包提醒 + 成果提交区 / 审核员验收提示。 */
+function OutsourceExecutionPanel({
+  workItemId,
+  status,
+  reviewNote,
+  isReviewer,
+  showSubmitForm,
+}: {
+  workItemId: string;
+  status: string;
+  reviewNote: string | null;
+  isReviewer: boolean;
+  showSubmitForm: boolean;
+}) {
+  return (
+    <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+      <h2 className="font-medium text-amber-800 dark:text-amber-300">外包执行任务</h2>
+      <ul className="mt-1 list-disc pl-5 text-[11px] text-amber-800/80 dark:text-amber-300/80 [&>li]:mt-0.5">
+        {OUTSOURCE_REMINDERS.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+
+      {status === "changes_requested" && (
+        <div className="mt-2 rounded border border-rose-300 bg-rose-50 p-2 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+          <p className="font-medium">已退回：审核员修改意见</p>
+          <p className="mt-0.5 whitespace-pre-wrap">{reviewNote ?? "（未填写意见）"}</p>
+          {!showSubmitForm && (
+            <p className="mt-1 text-rose-700/80 dark:text-rose-300/80">
+              等待外包负责人按意见修改后重新提交。
+            </p>
+          )}
+        </div>
+      )}
+
+      {showSubmitForm && <OutsourceResultForm workItemId={workItemId} isResubmit={status === "changes_requested"} />}
+
+      {status === "submitted" && isReviewer && (
+        <div className="mt-2 rounded border border-amber-400 bg-white p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+          <p className="font-medium">审核员验收提示</p>
+          <ul className="mt-0.5 list-disc pl-5 [&>li]:mt-0.5">
+            {OUTSOURCE_REVIEW_REMINDERS.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+          <p className="mt-1">
+            成果见下方「外包成果」区块；对照「验收标准」后，在底部操作区选择「审核通过」或「退回修改」（退回必须填写修改意见）。
+          </p>
+        </div>
+      )}
+      {status === "submitted" && !isReviewer && (
+        <p className="mt-2 text-xs text-amber-800/90 dark:text-amber-300/90">
+          成果已提交，等待审核员验收：通过或退回会显示在这里。
+        </p>
+      )}
+      {status === "approved" && (
+        <p className="mt-2 text-xs text-amber-800/90 dark:text-amber-300/90">
+          成果已审核通过。注意：通过不等于发布、不等于客户确认——后续对外使用 / 客户确认由审核员人工推进；任务由审核员「标记完成」收尾。
+        </p>
+      )}
+      {status === "completed" && (
+        <p className="mt-2 text-xs text-amber-800/90 dark:text-amber-300/90">
+          任务已完成（成果经人工验收）。
+        </p>
+      )}
+    </section>
+  );
+}
+
 /**
  * 任务详情 (TASK-071)：字段 + 人员 + 时间线 + 按角色/状态可用的操作。无权访问的任务
  * 与不存在的任务同样 404（可见性 AND 查询，不泄露存在性）。
@@ -178,6 +263,16 @@ export default async function TaskDetailPage({
           status={wi.status}
           merchantId={wi.merchant?.id ?? null}
           targetNode={wi.targetNode}
+        />
+      )}
+
+      {wi.type === "outsource_execution" && (
+        <OutsourceExecutionPanel
+          workItemId={wi.id}
+          status={wi.status}
+          reviewNote={wi.reviewNote}
+          isReviewer={canReviewWorkItems(user.role)}
+          showSubmitForm={checkSubmitOutsourceResult(user, accessFields).allowed}
         />
       )}
 
@@ -254,7 +349,9 @@ export default async function TaskDetailPage({
           label={
             wi.type === "ai_draft_review"
               ? "AI 草稿正文（人工粘贴 / 修改后，待人工审核）"
-              : "成果摘要（执行人提交）"
+              : wi.type === "outsource_execution"
+                ? "外包成果（成果说明 / 链接 / 备注，仅保留最新提交）"
+                : "成果摘要（执行人提交）"
           }
           value={wi.resultSummary}
         />

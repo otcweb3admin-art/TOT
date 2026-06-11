@@ -36,6 +36,7 @@ import {
   workItemVisibilityWhere,
   checkStartWorkItem,
   checkSubmitWorkItem,
+  checkSubmitOutsourceResult,
   checkApproveWorkItem,
   checkRequestWorkItemChanges,
   checkCompleteWorkItem,
@@ -458,6 +459,61 @@ async function run(): Promise<void> {
   check("approval did NOT auto-write the diagnosis node (fields + updatedAt unchanged)",
     diagAfter?.diagnosisSummary === diagBefore?.diagnosisSummary &&
     diagAfter?.updatedAt.getTime() === diagBefore?.updatedAt.getTime());
+
+  // 14) OUTSOURCE EXECUTION SUBMISSION (TASK-073) ------------------------------------------
+  console.log("\n[outsource submission]");
+  // operator creates an outsource task with assignedRole=executor (then assigns exec1).
+  check("operator may create outsource_execution", canCreateWorkItemType("operator", "outsource_execution"));
+  const tOut = await prisma.workItem.create({
+    data: { title: `${PREFIX}TASK_OUT_FLOW_${ts}`, type: "outsource_execution", merchantId: full.id, assignedRole: "executor", createdByProfileId: owner.id, requirements: "smoke 工作要求", acceptanceCriteria: "smoke 验收标准", requiresOutsource: true },
+  });
+  check("outsource task created with assignedRole=executor (role queue)", tOut.assignedRole === "executor" && tOut.status === "not_started");
+  const tAssigned = await prisma.workItem.update({ where: { id: tOut.id }, data: { assignedProfileId: exec1.id, status: "assigned" } });
+  check("assign to executor profile -> status assigned", tAssigned.assignedProfileId === exec1.id && tAssigned.status === "assigned");
+
+  // visibility: exec1 sees it, exec2 does not (re-using the TASK-071 temp executor profiles).
+  const exec2User = { profileId: exec2.id, role: "executor" as const };
+  const exec1SeesFlow = await prisma.workItem.findFirst({ where: { AND: [{ id: tOut.id }, workItemVisibilityWhere(exec1User)!] } });
+  const exec2SeesFlow = await prisma.workItem.findFirst({ where: { AND: [{ id: tOut.id }, workItemVisibilityWhere(exec2User)!] } });
+  check("assigned executor sees the task; another executor does NOT (no leak)", !!exec1SeesFlow && exec2SeesFlow === null);
+
+  // executor can start; can submit result from assigned/in_progress; others cannot.
+  check("executor may start own outsource task", checkStartWorkItem(exec1User, tAssigned).allowed === true);
+  check("submit-result allowed for assigned executor (from assigned / in_progress)",
+    checkSubmitOutsourceResult(exec1User, tAssigned).allowed === true &&
+    checkSubmitOutsourceResult(exec1User, { ...tAssigned, status: "in_progress" }).allowed === true);
+  check("submit-result DENIED for operator/admin (no proxy submit), other executor, ai_worker, non-outsource type",
+    !checkSubmitOutsourceResult({ profileId: owner.id, role: "operator" }, tAssigned).allowed &&
+    !checkSubmitOutsourceResult({ profileId: owner.id, role: "admin" }, tAssigned).allowed &&
+    !checkSubmitOutsourceResult(exec2User, tAssigned).allowed &&
+    !checkSubmitOutsourceResult({ profileId: exec1.id, role: "ai_worker" }, tAssigned).allowed &&
+    !checkSubmitOutsourceResult(exec1User, { ...tAssigned, type: "general_followup" }).allowed);
+
+  // submit result (the action composes 成果说明/链接/备注 -> resultSummary; replicate payload).
+  const RESULT = "【成果说明】smoke 已完成 10 张菜单图\n【成果链接】https://example.com/smoke-deliverable\n【补充备注】smoke 备注";
+  const tSubmitted = await prisma.workItem.update({ where: { id: tOut.id }, data: { status: "submitted", submittedAt: new Date(), resultSummary: RESULT } });
+  check("submitted: status + submittedAt + resultSummary(说明/链接/备注)", tSubmitted.status === "submitted" && tSubmitted.submittedAt !== null && (tSubmitted.resultSummary ?? "").includes("成果链接") && (tSubmitted.resultSummary ?? "").includes("https://example.com/smoke-deliverable"));
+
+  // operator home queue: outsource submitted counted.
+  const outsourceSubmittedCount = await prisma.workItem.count({ where: { AND: [workItemVisibilityWhere({ profileId: owner.id, role: "operator" })!, { type: { in: ["outsource_execution", "outsource_review"] }, status: "submitted" }] } });
+  check("operator home stat counts submitted outsource result", outsourceSubmittedCount >= 1, `count=${outsourceSubmittedCount}`);
+
+  // review: request changes (note required is enforced by the action) then resubmit then approve.
+  check("operator may request changes / approve on submitted outsource", checkRequestWorkItemChanges({ profileId: owner.id, role: "operator" }, tSubmitted).allowed && checkApproveWorkItem({ profileId: owner.id, role: "operator" }, tSubmitted).allowed);
+  const tReturned = await prisma.workItem.update({ where: { id: tOut.id }, data: { status: "changes_requested", reviewNote: "smoke 修改意见：图 3 需重拍", reviewerProfileId: owner.id } });
+  check("changes_requested recorded with review note", tReturned.status === "changes_requested" && (tReturned.reviewNote ?? "").includes("smoke 修改意见"));
+  check("executor may RESUBMIT after changes_requested", checkSubmitOutsourceResult(exec1User, tReturned).allowed === true);
+  const tResubmitted = await prisma.workItem.update({ where: { id: tOut.id }, data: { status: "submitted", submittedAt: new Date(), resultSummary: RESULT + "\n【成果说明】v2 已重拍" } });
+  check("resubmit overwrites to latest (V1 keeps newest only)", tResubmitted.status === "submitted" && (tResubmitted.resultSummary ?? "").includes("v2 已重拍"));
+  const tApproved = await prisma.workItem.update({ where: { id: tOut.id }, data: { status: "approved", approvedAt: new Date(), reviewerProfileId: owner.id } });
+  check("approved: NOT auto-completed (completedAt null, status stays approved)", tApproved.status === "approved" && tApproved.completedAt === null);
+  const autoClientConfirm = await prisma.workItem.count({ where: { merchantId: full.id, type: "client_confirmation" } });
+  check("approval did NOT auto-create a client_confirmation task", autoClientConfirm === 0, `count=${autoClientConfirm}`);
+
+  // merchant / ai_worker boundaries on the outsource task.
+  check("merchant cannot see the outsource task; ai_worker cannot operate it",
+    (await prisma.workItem.findFirst({ where: { AND: [{ id: tOut.id }, workItemVisibilityWhere({ profileId: other.id, role: "merchant" })!] } })) === null &&
+    workItemVisibilityWhere({ profileId: other.id, role: "ai_worker" }) === null);
 }
 
 async function main(): Promise<void> {

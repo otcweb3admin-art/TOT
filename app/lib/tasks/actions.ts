@@ -11,6 +11,7 @@ import {
   workItemVisibilityWhere,
   checkStartWorkItem,
   checkSubmitWorkItem,
+  checkSubmitOutsourceResult,
   checkRequestWorkItemChanges,
   checkApproveWorkItem,
   checkCompleteWorkItem,
@@ -164,6 +165,45 @@ export async function submitWorkItem(
       submittedAt: new Date(),
       ...(resultSummary ? { resultSummary } : {}),
     },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/**
+ * 外包成果提交 (TASK-073)：executor 本人把 成果说明（必填）/ 成果链接 / 补充备注 提交为
+ * 待审核成果 → submitted。resultSummary 仅保留最新提交（V1 无版本模型）。不自动 approve /
+ * complete / 客户确认，不写商家业务节点，不接文件上传——链接为外部交付地址。
+ */
+export async function submitOutsourceResult(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "任务不存在或无权访问。" };
+  const c = checkSubmitOutsourceResult(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  const description = opt(formData, "resultDescription");
+  if (!description) return { error: "成果说明不能为空——请说明你交付了什么、放在哪里。" };
+  const link = opt(formData, "resultLink");
+  const note = opt(formData, "resultNote");
+
+  const resultSummary = [
+    `【成果说明】${description}`,
+    link ? `【成果链接】${link}` : null,
+    note ? `【补充备注】${note}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { status: "submitted", submittedAt: new Date(), resultSummary },
   });
   revalidateTaskPaths(wi.id);
   redirect(`/dashboard/tasks/${wi.id}`);

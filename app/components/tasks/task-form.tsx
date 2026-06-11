@@ -1,8 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createWorkItem, type WorkItemActionState } from "@/lib/tasks/actions";
+
+// TASK-073: 选择外包执行任务时的创建提示（保护客户数据 + 证据纪律）。
+const OUTSOURCE_CREATE_GUIDANCE = [
+  "必须填写清楚「要求」——外包只看得到本任务，不会看到商家上下文。",
+  "必须填写「验收标准」——审核员按此验收，外包按此交付。",
+  "不得在任务中暴露完整客户经营数据（只给完成本任务必需的信息）。",
+  "如附 AI 参考 brief，只放人工审核后的内容。",
+  "不要把未审核的 AI 草稿直接给外包。",
+];
 
 // 创建任务表单 (TASK-071)。类型选项由服务端按角色过滤后传入（collector 只见
 // collector_intake）；服务端 action 再次校验，不依赖前端过滤。V1 仅支持负责人角色
@@ -40,6 +49,18 @@ export function TaskForm({
     createWorkItem,
     undefined,
   );
+  // TASK-073: 控制 类型/负责人角色/需要外包，选外包执行任务时给提示并自动建议 executor。
+  const [type, setType] = useState(typeOptions[0]?.value ?? "");
+  const [assignedRole, setAssignedRole] = useState("");
+  const [requiresOutsource, setRequiresOutsource] = useState(false);
+  const isOutsource = type === "outsource_execution";
+  const onTypeChange = (v: string) => {
+    setType(v);
+    if (v === "outsource_execution") {
+      setRequiresOutsource(true);
+      if (assignedRole === "") setAssignedRole("executor");
+    }
+  };
 
   return (
     <form action={action} className="flex max-w-2xl flex-col gap-3">
@@ -57,7 +78,13 @@ export function TaskForm({
 
       <label className="flex flex-col gap-1 text-sm">
         任务类型 *
-        <select name="type" required className={INPUT_CLS}>
+        <select
+          name="type"
+          required
+          className={INPUT_CLS}
+          value={type}
+          onChange={(e) => onTypeChange(e.target.value)}
+        >
           {typeOptions.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
@@ -65,6 +92,17 @@ export function TaskForm({
           ))}
         </select>
       </label>
+
+      {isOutsource && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          <p className="font-medium">创建外包执行任务前请确认：</p>
+          <ul className="mt-1 list-disc pl-5 [&>li]:mt-0.5">
+            {OUTSOURCE_CREATE_GUIDANCE.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <label className="flex flex-col gap-1 text-sm">
         标题 *
@@ -94,7 +132,12 @@ export function TaskForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           负责人角色
-          <select name="assignedRole" className={INPUT_CLS} defaultValue="">
+          <select
+            name="assignedRole"
+            className={INPUT_CLS}
+            value={assignedRole}
+            onChange={(e) => setAssignedRole(e.target.value)}
+          >
             {ROLE_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
@@ -119,7 +162,13 @@ export function TaskForm({
           <input type="checkbox" name="requiresAi" /> 需要 AI 辅助
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="requiresOutsource" /> 需要外包
+          <input
+            type="checkbox"
+            name="requiresOutsource"
+            checked={requiresOutsource}
+            onChange={(e) => setRequiresOutsource(e.target.checked)}
+          />{" "}
+          需要外包
         </label>
         <label className="flex items-center gap-1.5">
           <input type="checkbox" name="requiresClientConfirmation" /> 需要客户确认

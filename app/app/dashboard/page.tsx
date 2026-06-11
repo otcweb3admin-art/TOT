@@ -253,28 +253,40 @@ function ReviewerWorkspace({
 function OutsourceWorkspace({ stats }: { stats: WorkItemStats | null }) {
   const s = stats?.byStatus;
   const pending = (s?.not_started ?? 0) + (s?.assigned ?? 0);
+  const noTasks = (stats?.total ?? 0) === 0;
   return (
     <>
-      <RoleQueuePreview
-        title="我的任务（实时）"
-        items={[
-          { label: "待开始", value: `${pending} 个` },
-          { label: "进行中", value: `${s?.in_progress ?? 0} 个` },
-          { label: "已提交待审核", value: `${s?.submitted ?? 0} 个` },
-          {
-            label: "被退回修改",
-            value:
-              (s?.changes_requested ?? 0) > 0 ? (
-                <TasksLink label={`${s?.changes_requested} 个 — 按意见修改重交`} />
-              ) : (
-                "0 个"
-              ),
-          },
-          { label: "已完成", value: `${s?.completed ?? 0} 个` },
-          { label: "入口", value: <TasksLink label="打开任务中心" /> },
-        ]}
-        note="这里只显示分配给你的外包任务（要求 + 验收标准），不显示商家完整经营数据与其它外包任务。"
-      />
+      {noTasks ? (
+        <section className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+          <p className="font-medium">当前暂无分配给你的外包任务。</p>
+          <p className="mt-1 text-xs">外包任务由审核员创建并分配。</p>
+          <p className="mt-0.5 text-xs">你只能看到分配给自己的任务。</p>
+        </section>
+      ) : (
+        <RoleQueuePreview
+          title="我的任务（实时）"
+          items={[
+            { label: "待开始", value: `${pending} 个` },
+            { label: "进行中", value: `${s?.in_progress ?? 0} 个` },
+            { label: "已提交待审核", value: `${s?.submitted ?? 0} 个` },
+            {
+              label: "被退回修改",
+              value:
+                (s?.changes_requested ?? 0) > 0 ? (
+                  <TasksLink label={`${s?.changes_requested} 个 — 按意见修改重交`} />
+                ) : (
+                  "0 个"
+                ),
+            },
+            {
+              label: "已通过 / 已完成",
+              value: `${(s?.approved ?? 0) + (s?.completed ?? 0)} 个`,
+            },
+            { label: "入口", value: <TasksLink label="打开任务中心：查看要求 / 验收标准 / 提交成果" /> },
+          ]}
+          note="这里只显示分配给你的外包任务（要求 + 验收标准 + 成果提交），不显示商家完整经营数据与其它外包任务。"
+        />
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
           <h2 className="text-sm font-medium text-zinc-500">任务与交付标准说明</h2>

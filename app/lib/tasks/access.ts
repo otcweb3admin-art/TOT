@@ -195,6 +195,30 @@ export function checkCancelWorkItem(user: TaskUser, wi: WorkItemAccessFields): W
   return ALLOWED;
 }
 
+/**
+ * Outsource result submission (TASK-073 V1): ONLY the assigned executor himself —
+ * operator/admin do NOT submit on a vendor's behalf. Allowed straight from
+ * not_started/assigned (提交成果即代表工作完成), in_progress, and changes_requested (重交).
+ */
+export function checkSubmitOutsourceResult(
+  user: TaskUser,
+  wi: WorkItemAccessFields,
+): WorkItemActionCheck {
+  if (wi.type !== "outsource_execution") {
+    return deny("仅外包执行任务可使用成果提交。");
+  }
+  if (user.role !== "executor") {
+    return deny("V1 仅外包负责人本人（executor）可提交成果；operator / admin 不代外包提交。");
+  }
+  if (wi.assignedProfileId !== user.profileId) {
+    return deny("仅分配给你的外包任务可提交成果。");
+  }
+  if (!["not_started", "assigned", "in_progress", "changes_requested"].includes(wi.status)) {
+    return deny("仅「未开始 / 已分配 / 进行中 / 退回修改」状态的外包任务可提交成果。");
+  }
+  return ALLOWED;
+}
+
 /** Assign a concrete profile: admin any task; operator only outsource_execution（分配外包）. */
 export function checkAssignWorkItem(user: TaskUser, wi: WorkItemAccessFields): WorkItemActionCheck {
   if (user.role !== "admin" && !(user.role === "operator" && wi.type === "outsource_execution")) {
