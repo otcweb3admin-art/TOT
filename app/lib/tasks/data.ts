@@ -1,5 +1,5 @@
 import "server-only";
-import type { WorkItemStatus } from "@prisma/client";
+import type { Role, WorkItemStatus, WorkItemType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { workItemVisibilityWhere, type TaskUser } from "@/lib/tasks/access";
@@ -107,6 +107,9 @@ export type WorkItemStats = {
     aiDraftSubmitted: number;
     outsourceSubmitted: number;
     clientConfirmationOpen: number;
+    /** TASK-074: 待客户确认（submitted） / 客户已反馈待处理（approved+changes_requested） */
+    clientConfirmationAwaiting: number;
+    clientConfirmationFeedback: number;
   };
   highPriorityOpen: number;
   overdueOpen: number;
@@ -130,7 +133,7 @@ export async function getWorkItemStatsForUser(user: TaskUser): Promise<WorkItemS
   const vis = workItemVisibilityWhere(user);
   if (vis === null) return null;
 
-  const [grouped, aiDraftSubmitted, outsourceSubmitted, clientConfirmationOpen, highPriorityOpen, overdueOpen] =
+  const [grouped, aiDraftSubmitted, outsourceSubmitted, clientConfirmationOpen, clientConfirmationAwaiting, clientConfirmationFeedback, highPriorityOpen, overdueOpen] =
     await Promise.all([
       prisma.workItem.groupBy({ by: ["status"], where: vis, _count: { _all: true } }),
       prisma.workItem.count({
@@ -143,6 +146,12 @@ export async function getWorkItemStatsForUser(user: TaskUser): Promise<WorkItemS
       }),
       prisma.workItem.count({
         where: { AND: [vis, { type: "client_confirmation", status: { notIn: OPEN_NOT_IN } }] },
+      }),
+      prisma.workItem.count({
+        where: { AND: [vis, { type: "client_confirmation", status: "submitted" }] },
+      }),
+      prisma.workItem.count({
+        where: { AND: [vis, { type: "client_confirmation", status: { in: ["approved", "changes_requested"] } }] },
       }),
       prisma.workItem.count({
         where: { AND: [vis, { priority: { in: ["high", "urgent"] }, status: { notIn: OPEN_NOT_IN } }] },
@@ -164,17 +173,32 @@ export async function getWorkItemStatsForUser(user: TaskUser): Promise<WorkItemS
       aiDraftSubmitted,
       outsourceSubmitted,
       clientConfirmationOpen,
+      clientConfirmationAwaiting,
+      clientConfirmationFeedback,
     },
     highPriorityOpen,
     overdueOpen,
   };
 }
 
-/** Profiles selectable as assignee: operator → active executors only; admin → all active. */
-export async function listAssignableProfiles(user: TaskUser) {
+/**
+ * Profiles selectable as assignee. admin → all active; operator → depends on task type:
+ * outsource_execution → executors, client_confirmation → merchants (TASK-074), else none.
+ */
+export async function listAssignableProfiles(user: TaskUser, taskType?: WorkItemType) {
   if (user.role !== "admin" && user.role !== "operator") return [];
+  let roleFilter: { role: Role } | null | Record<string, never> = {};
+  if (user.role === "operator") {
+    roleFilter =
+      taskType === "outsource_execution"
+        ? { role: "executor" as Role }
+        : taskType === "client_confirmation"
+          ? { role: "merchant" as Role }
+          : null;
+    if (roleFilter === null) return [];
+  }
   return prisma.userProfile.findMany({
-    where: { status: "active", ...(user.role === "operator" ? { role: "executor" as const } : {}) },
+    where: { status: "active", ...roleFilter },
     select: { id: true, email: true, role: true },
     orderBy: { email: "asc" },
     take: 100,

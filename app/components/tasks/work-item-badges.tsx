@@ -1,20 +1,27 @@
-import type { WorkItemStatus, WorkItemPriority } from "@prisma/client";
+import type { WorkItemStatus, WorkItemPriority, WorkItemType } from "@prisma/client";
 import {
-  WORK_ITEM_STATUS_LABELS,
   WORK_ITEM_STATUS_STYLES,
   WORK_ITEM_PRIORITY_LABELS,
   WORK_ITEM_PRIORITY_STYLES,
+  workItemStatusLabel,
 } from "@/lib/tasks/display";
 
 // WorkItem 专用徽章 (TASK-071) — presentation only。不复用 merchants/StatusBadge：
 // 任务的 submitted=待审核，交接的 submitted=已提交交接，语义不同不可混。
+// TASK-074: 传入 type 时按类型显示客户语义（client_confirmation: 待确认/客户已确认/客户要求修改）。
 
 const PILL = "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium";
 
-export function TaskStatusBadge({ status }: { status: WorkItemStatus }) {
+export function TaskStatusBadge({
+  status,
+  type,
+}: {
+  status: WorkItemStatus;
+  type?: WorkItemType;
+}) {
   return (
     <span className={`${PILL} ${WORK_ITEM_STATUS_STYLES[status]}`}>
-      {WORK_ITEM_STATUS_LABELS[status]}
+      {workItemStatusLabel(status, type)}
     </span>
   );
 }

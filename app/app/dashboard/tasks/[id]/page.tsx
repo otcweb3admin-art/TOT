@@ -12,6 +12,7 @@ import {
   checkCompleteWorkItem,
   checkCancelWorkItem,
   checkAssignWorkItem,
+  checkConfirmClientWorkItem,
   canReviewWorkItems,
 } from "@/lib/tasks/access";
 import { getWorkItemByIdForUser, listAssignableProfiles } from "@/lib/tasks/data";
@@ -24,6 +25,7 @@ import {
 } from "@/components/tasks/work-item-badges";
 import { WorkItemActions } from "@/components/tasks/work-item-actions";
 import { OutsourceResultForm } from "@/components/tasks/outsource-result-form";
+import { ClientConfirmationForm } from "@/components/tasks/client-confirmation-form";
 import { formatDateTime } from "@/components/merchants/format";
 import { PageHeader } from "@/components/ui/page-header";
 import { btnSecondary } from "@/components/ui/button";
@@ -204,6 +206,85 @@ function OutsourceExecutionPanel({
   );
 }
 
+const CLIENT_CONFIRM_REMINDERS = [
+  "请确认当前内容是否可以进入下一步。",
+  "确认通过不代表承诺增长结果。",
+  "如需修改，请写清楚需要调整的地方。",
+];
+
+/** client_confirmation 专属面板 (TASK-074)：客户提醒 + 确认/修改意见表单 + 双方状态指引。 */
+function ClientConfirmationPanel({
+  workItemId,
+  status,
+  reviewNote,
+  isClientViewer,
+  isReviewer,
+  showClientForm,
+}: {
+  workItemId: string;
+  status: string;
+  reviewNote: string | null;
+  isClientViewer: boolean;
+  isReviewer: boolean;
+  showClientForm: boolean;
+}) {
+  return (
+    <section className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
+      <h2 className="font-medium text-emerald-800 dark:text-emerald-300">客户确认事项</h2>
+      <ul className="mt-1 list-disc pl-5 text-[11px] text-emerald-800/80 dark:text-emerald-300/80 [&>li]:mt-0.5">
+        {CLIENT_CONFIRM_REMINDERS.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+
+      {/* 审核员侧：未发起前的推进指引 */}
+      {isReviewer && ["not_started", "assigned", "in_progress"].includes(status) && (
+        <p className="mt-2 text-xs text-emerald-800/90 dark:text-emerald-300/90">
+          尚未发起确认：先在下方分配客户负责人（merchant），再用底部操作区「开始任务」→「提交审核」把事项推送给客户——提交后客户登录即可看到并确认。
+        </p>
+      )}
+
+      {/* 客户操作区（merchant 本人 + submitted） */}
+      {showClientForm && <ClientConfirmationForm workItemId={workItemId} />}
+
+      {status === "submitted" && isReviewer && (
+        <p className="mt-2 text-xs text-emerald-800/90 dark:text-emerald-300/90">
+          等待客户确认：客户登录后会看到「确认通过 / 提交修改意见」两个操作。
+        </p>
+      )}
+
+      {status === "changes_requested" && (
+        <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          <p className="font-medium">客户提出修改意见</p>
+          <p className="mt-0.5 whitespace-pre-wrap">{reviewNote ?? "（未填写）"}</p>
+          {isClientViewer ? (
+            <p className="mt-1">
+              修改意见已提交，等待团队处理。不需要重复提交——团队调整后会重新发起确认；有疑问请联系负责人。
+            </p>
+          ) : (
+            <p className="mt-1">
+              需要内部处理：按意见调整后可创建后续任务（外包修改 / AI 草稿 / 通用跟进，去「新建任务」），处理完成后由审核员重新发起确认或「标记完成」。系统不会自动创建后续任务。
+            </p>
+          )}
+        </div>
+      )}
+
+      {status === "approved" && (
+        <p className="mt-2 text-xs text-emerald-800/90 dark:text-emerald-300/90">
+          {isClientViewer
+            ? "已确认 ✓ 团队将进入下一步。确认通过不代表承诺增长结果。"
+            : "客户已确认 ✓ 可人工「标记完成」收尾，或在「新建任务」创建下一步任务。系统不会自动发布、不会自动完成、不会自动创建后续任务。"}
+        </p>
+      )}
+      {status === "completed" && (
+        <p className="mt-2 text-xs text-emerald-800/90 dark:text-emerald-300/90">
+          该确认事项已由团队处理完成。
+        </p>
+      )}
+    </section>
+  );
+}
+
 /**
  * 任务详情 (TASK-071)：字段 + 人员 + 时间线 + 按角色/状态可用的操作。无权访问的任务
  * 与不存在的任务同样 404（可见性 AND 查询，不泄露存在性）。
@@ -234,7 +315,10 @@ export default async function TaskDetailPage({
     cancel: checkCancelWorkItem(user, accessFields),
     assign: checkAssignWorkItem(user, accessFields),
   };
-  const assignOptions = checks.assign.allowed ? await listAssignableProfiles(user) : [];
+  const assignOptions = checks.assign.allowed
+    ? await listAssignableProfiles(user, wi.type)
+    : [];
+  const isClientViewer = user.role === "merchant";
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6 md:p-8">
@@ -249,7 +333,7 @@ export default async function TaskDetailPage({
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <TaskStatusBadge status={wi.status} />
+        <TaskStatusBadge status={wi.status} type={wi.type} />
         <TaskPriorityBadge priority={wi.priority} />
         <TaskFlagBadges
           requiresAi={wi.requiresAi}
@@ -273,6 +357,17 @@ export default async function TaskDetailPage({
           reviewNote={wi.reviewNote}
           isReviewer={canReviewWorkItems(user.role)}
           showSubmitForm={checkSubmitOutsourceResult(user, accessFields).allowed}
+        />
+      )}
+
+      {wi.type === "client_confirmation" && (
+        <ClientConfirmationPanel
+          workItemId={wi.id}
+          status={wi.status}
+          reviewNote={wi.reviewNote}
+          isClientViewer={isClientViewer}
+          isReviewer={canReviewWorkItems(user.role)}
+          showClientForm={checkConfirmClientWorkItem(user, accessFields).allowed}
         />
       )}
 
@@ -342,9 +437,18 @@ export default async function TaskDetailPage({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <TextBlock label="说明" value={wi.description} />
-        <TextBlock label="要求" value={wi.requirements} />
-        <TextBlock label="验收标准" value={wi.acceptanceCriteria} />
+        <TextBlock
+          label={wi.type === "client_confirmation" ? "说明 / 背景" : "说明"}
+          value={wi.description}
+        />
+        <TextBlock
+          label={wi.type === "client_confirmation" ? "需要确认的内容" : "要求"}
+          value={wi.requirements}
+        />
+        <TextBlock
+          label={wi.type === "client_confirmation" ? "确认后的下一步" : "验收标准"}
+          value={wi.acceptanceCriteria}
+        />
         <TextBlock
           label={
             wi.type === "ai_draft_review"
@@ -355,16 +459,25 @@ export default async function TaskDetailPage({
           }
           value={wi.resultSummary}
         />
-        <TextBlock label="审核意见 / 退回原因" value={wi.reviewNote} />
+        <TextBlock
+          label={
+            wi.type === "client_confirmation" ? "客户反馈 / 修改意见" : "审核意见 / 退回原因"
+          }
+          value={wi.reviewNote}
+        />
       </div>
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-zinc-500">可执行操作</h2>
-        <WorkItemActions workItemId={wi.id} checks={checks} assignOptions={assignOptions} />
-        <p className="mt-2 text-[11px] text-zinc-400">
-          所有状态变化均为人工触发：审核通过不等于自动完成，任务流转不改变商家节点状态；AI 不参与审批。
-        </p>
-      </section>
+      {/* TASK-074: merchant（客户）不显示内部操作区——客户操作在上方确认面板；
+          内部 7 个动作对 merchant 全部拒绝（服务端仍校验），不向客户展示内部术语。 */}
+      {!isClientViewer && (
+        <section>
+          <h2 className="mb-2 text-sm font-medium text-zinc-500">可执行操作</h2>
+          <WorkItemActions workItemId={wi.id} checks={checks} assignOptions={assignOptions} />
+          <p className="mt-2 text-[11px] text-zinc-400">
+            所有状态变化均为人工触发：审核通过不等于自动完成，任务流转不改变商家节点状态；AI 不参与审批。
+          </p>
+        </section>
+      )}
     </main>
   );
 }

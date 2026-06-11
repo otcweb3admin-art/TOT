@@ -13,6 +13,15 @@ const OUTSOURCE_CREATE_GUIDANCE = [
   "不要把未审核的 AI 草稿直接给外包。",
 ];
 
+// TASK-074: 选择客户确认事项时的创建提示——内容是给客户看的。
+const CLIENT_CONFIRM_CREATE_GUIDANCE = [
+  "这是给客户看的内容：写清楚 确认什么、为什么确认、确认后进入哪一步。",
+  "「要求」一栏写需要确认的内容；「验收标准」一栏写确认后的下一步。",
+  "不要包含内部审核细节，不要暴露外包信息，不要暴露内部 AI Prompt。",
+  "不要承诺增长结果。",
+  "创建后在详情页把负责人分配给客户（merchant），再「开始任务」→「提交审核」发起确认。",
+];
+
 // 创建任务表单 (TASK-071)。类型选项由服务端按角色过滤后传入（collector 只见
 // collector_intake）；服务端 action 再次校验，不依赖前端过滤。V1 仅支持负责人角色
 // （assignedRole）；具体负责人由 operator/admin 在任务详情页分配。
@@ -53,12 +62,18 @@ export function TaskForm({
   const [type, setType] = useState(typeOptions[0]?.value ?? "");
   const [assignedRole, setAssignedRole] = useState("");
   const [requiresOutsource, setRequiresOutsource] = useState(false);
+  const [requiresClientConfirmation, setRequiresClientConfirmation] = useState(false);
   const isOutsource = type === "outsource_execution";
+  const isClientConfirm = type === "client_confirmation";
   const onTypeChange = (v: string) => {
     setType(v);
     if (v === "outsource_execution") {
       setRequiresOutsource(true);
       if (assignedRole === "") setAssignedRole("executor");
+    }
+    if (v === "client_confirmation") {
+      setRequiresClientConfirmation(true);
+      if (assignedRole === "") setAssignedRole("merchant");
     }
   };
 
@@ -98,6 +113,17 @@ export function TaskForm({
           <p className="font-medium">创建外包执行任务前请确认：</p>
           <ul className="mt-1 list-disc pl-5 [&>li]:mt-0.5">
             {OUTSOURCE_CREATE_GUIDANCE.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isClientConfirm && (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <p className="font-medium">创建客户确认事项前请确认：</p>
+          <ul className="mt-1 list-disc pl-5 [&>li]:mt-0.5">
+            {CLIENT_CONFIRM_CREATE_GUIDANCE.map((g) => (
               <li key={g}>{g}</li>
             ))}
           </ul>
@@ -171,7 +197,13 @@ export function TaskForm({
           需要外包
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="requiresClientConfirmation" /> 需要客户确认
+          <input
+            type="checkbox"
+            name="requiresClientConfirmation"
+            checked={requiresClientConfirmation}
+            onChange={(e) => setRequiresClientConfirmation(e.target.checked)}
+          />{" "}
+          需要客户确认
         </label>
       </fieldset>
 

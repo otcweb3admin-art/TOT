@@ -136,6 +136,10 @@ function isOperatingRole(role: Role): boolean {
 function isTaskActor(user: TaskUser, wi: WorkItemAccessFields): boolean {
   if (!isOperatingRole(user.role)) return false;
   if (user.role === "admin") return true;
+  // TASK-074: client_confirmation is DRIVEN internally by the reviewer (operator) even
+  // after it is assigned to a merchant profile — the reviewer starts it and submits it
+  // (=发起客户确认); the client only confirms / requests changes via the client actions.
+  if (wi.type === "client_confirmation" && canReviewWorkItems(user.role)) return true;
   if (wi.assignedProfileId) return wi.assignedProfileId === user.profileId;
   return wi.createdByProfileId === user.profileId || wi.assignedRole === user.role;
 }
@@ -219,13 +223,45 @@ export function checkSubmitOutsourceResult(
   return ALLOWED;
 }
 
-/** Assign a concrete profile: admin any task; operator only outsource_execution（分配外包）. */
+/** Assign a concrete profile: admin any task; operator outsource_execution（分配外包）
+ *  and client_confirmation（指定客户负责人, TASK-074）. */
 export function checkAssignWorkItem(user: TaskUser, wi: WorkItemAccessFields): WorkItemActionCheck {
-  if (user.role !== "admin" && !(user.role === "operator" && wi.type === "outsource_execution")) {
-    return deny("仅 admin 可修改任意分配；operator 仅可分配外包执行任务。");
+  const operatorAssignable =
+    wi.type === "outsource_execution" || wi.type === "client_confirmation";
+  if (user.role !== "admin" && !(user.role === "operator" && operatorAssignable)) {
+    return deny("仅 admin 可修改任意分配；operator 仅可分配 外包执行 / 客户确认 任务。");
   }
   if (!["not_started", "assigned"].includes(wi.status)) {
     return deny("仅「未开始 / 已分配」状态的任务可（重新）分配负责人。");
   }
   return ALLOWED;
+}
+
+// ===== Client confirmation actions (TASK-074 V1) =====
+// The merchant (客户) acts ONLY on client_confirmation tasks assigned to their own
+// profile, ONLY while status=submitted（等待客户确认）. Confirming -> approved（客户已确认,
+// 不是发布、不是自动完成）; requesting changes -> changes_requested（客户要求修改）.
+
+function checkClientActionBase(user: TaskUser, wi: WorkItemAccessFields): WorkItemActionCheck {
+  if (wi.type !== "client_confirmation") return deny("仅客户确认事项可由客户操作。");
+  if (user.role !== "merchant") return deny("仅客户（merchant）账号可确认或提出修改意见。");
+  if (wi.assignedProfileId !== user.profileId) return deny("仅分配给你的确认事项可操作。");
+  if (wi.status !== "submitted") {
+    return deny("该事项当前不在「待确认」状态——已确认 / 已反馈的事项无需重复操作。");
+  }
+  return ALLOWED;
+}
+
+export function checkConfirmClientWorkItem(
+  user: TaskUser,
+  wi: WorkItemAccessFields,
+): WorkItemActionCheck {
+  return checkClientActionBase(user, wi);
+}
+
+export function checkRequestClientWorkItemChanges(
+  user: TaskUser,
+  wi: WorkItemAccessFields,
+): WorkItemActionCheck {
+  return checkClientActionBase(user, wi);
 }

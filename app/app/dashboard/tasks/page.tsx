@@ -30,6 +30,12 @@ const FILTER_LABELS: Record<WorkItemListFilter, string> = {
   completed: "已完成",
 };
 
+// TASK-074: merchant（客户）视角用客户语义文案——他们只看到自己的客户确认事项。
+const CLIENT_FILTER_LABELS: Partial<Record<WorkItemListFilter, string>> = {
+  submitted: "待确认",
+  changes_requested: "需要修改",
+};
+
 /** 各角色空状态下一步提示（规则提示，非决策）。 */
 const EMPTY_HINTS: Record<string, string[]> = {
   collector: ["从「新建任务」创建采集任务，或先在商家管理新建商家后按接入向导采集。"],
@@ -75,14 +81,21 @@ export default async function TaskCenterPage({
     getWorkItemStatsForUser(user),
   ]);
 
+  const isClient = user.role === "merchant";
   const filterCount = (f: WorkItemListFilter): number =>
     !stats ? 0 : f === "all" ? stats.total : stats.byStatus[f];
+  const filterLabel = (f: WorkItemListFilter): string =>
+    (isClient ? CLIENT_FILTER_LABELS[f] : undefined) ?? FILTER_LABELS[f];
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6 md:p-8">
       <PageHeader
-        title="任务中心"
-        description={`当前角色：${roleLabel(user.role)} — 这里只显示你可见、应处理的任务。审核 / 退回 / 完成均为人工操作，系统不自动流转。`}
+        title={isClient ? "我的事项" : "任务中心"}
+        description={
+          isClient
+            ? "这里只显示需要你确认的事项：内容没问题点「确认通过」，需要调整就提交修改意见。"
+            : `当前角色：${roleLabel(user.role)} — 这里只显示你可见、应处理的任务。审核 / 退回 / 完成均为人工操作，系统不自动流转。`
+        }
         actions={
           canCreateAnyWorkItem(user.role) ? (
             <Link href="/dashboard/tasks/new" className={btnPrimary}>
@@ -92,9 +105,9 @@ export default async function TaskCenterPage({
         }
       />
 
-      {user.role === "merchant" && (
+      {isClient && (
         <p className="rounded-lg border border-zinc-200 p-3 text-xs text-zinc-500 dark:border-zinc-800">
-          客户事项 V1：这里只显示分配给你的「客户确认事项」。客户绑定商家与资料上传将在后续版本实现。
+          确认通过后团队才会进入下一步；确认通过不代表承诺增长结果。资料上传等更多客户功能将在后续版本提供。
         </p>
       )}
 
@@ -110,14 +123,20 @@ export default async function TaskCenterPage({
                 : "border-zinc-300 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
             }`}
           >
-            {FILTER_LABELS[f]} {filterCount(f)}
+            {filterLabel(f)} {filterCount(f)}
           </Link>
         ))}
       </nav>
 
       {items.length === 0 ? (
         <EmptyState
-          title={filter === "all" ? "当前暂无任务" : `暂无「${FILTER_LABELS[filter]}」状态的任务`}
+          title={
+            filter === "all"
+              ? isClient
+                ? "当前暂无需要你确认的事项"
+                : "当前暂无任务"
+              : `暂无「${filterLabel(filter)}」状态的${isClient ? "事项" : "任务"}`
+          }
           hints={EMPTY_HINTS[user.role]}
           actions={
             canCreateAnyWorkItem(user.role) ? (
@@ -134,7 +153,7 @@ export default async function TaskCenterPage({
       ) : (
         <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <h2 className="mb-1 text-sm font-medium text-zinc-500">
-            任务列表（{FILTER_LABELS[filter]}，最多 200 条）
+            {isClient ? "事项列表" : "任务列表"}（{filterLabel(filter)}，最多 200 条）
           </h2>
           <ul className="flex flex-col">
             {items.map((t) => (
@@ -150,7 +169,7 @@ export default async function TaskCenterPage({
                     {t.title}
                   </Link>
                   <span className="text-xs text-zinc-500">{WORK_ITEM_TYPE_LABELS[t.type]}</span>
-                  <TaskStatusBadge status={t.status} />
+                  <TaskStatusBadge status={t.status} type={t.type} />
                   <TaskPriorityBadge priority={t.priority} />
                   <TaskFlagBadges
                     requiresAi={t.requiresAi}

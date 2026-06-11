@@ -33,6 +33,21 @@ export const WORK_ITEM_PRIORITY_LABELS: Record<WorkItemPriority, string> = {
   urgent: "紧急",
 };
 
+// TASK-074: client_confirmation 的客户语义状态文案（覆盖通用标签；其余状态用通用）。
+// submitted=等待客户确认 / approved=客户已确认 / changes_requested=客户要求修改。
+export const CLIENT_CONFIRMATION_STATUS_LABELS: Partial<Record<WorkItemStatus, string>> = {
+  submitted: "待确认",
+  approved: "客户已确认",
+  changes_requested: "客户要求修改",
+};
+
+export function workItemStatusLabel(status: WorkItemStatus, type?: WorkItemType): string {
+  if (type === "client_confirmation" && CLIENT_CONFIRMATION_STATUS_LABELS[status]) {
+    return CLIENT_CONFIRMATION_STATUS_LABELS[status]!;
+  }
+  return WORK_ITEM_STATUS_LABELS[status];
+}
+
 export const WORK_ITEM_STATUS_STYLES: Record<WorkItemStatus, string> = {
   not_started: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
   in_progress: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",

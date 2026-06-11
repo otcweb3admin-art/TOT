@@ -15,11 +15,11 @@ const NAV_ITEMS = [
 
 // TASK-070: per-role nav visibility — DISPLAY filtering only (server-side permission
 // enforcement is unchanged; direct URLs still go through the existing guards).
-// merchant / ai_worker see only the workspace home (merchant reaches 我的事项 from the
-// workspace card); executor gets home + 任务中心 (TASK-071); collector adds the
-// intake-related entries; operator / admin see everything.
+// merchant gets home + 我的事项 (TASK-074: /dashboard/tasks shows only their own
+// client_confirmation items); ai_worker home only; executor home + 任务中心 (TASK-071);
+// collector adds the intake-related entries; operator / admin see everything.
 const NAV_HREFS_BY_ROLE: Record<Role, string[]> = {
-  merchant: ["/dashboard"],
+  merchant: ["/dashboard", "/dashboard/tasks"],
   ai_worker: ["/dashboard"],
   executor: ["/dashboard", "/dashboard/tasks"],
   collector: [
@@ -60,7 +60,10 @@ export function DashboardNav({
                 href={item.href}
                 className="text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
               >
-                {item.label}
+                {/* TASK-074: 客户视角把任务中心显示为「我的事项」（仅文案，路由相同） */}
+                {role === "merchant" && item.href === "/dashboard/tasks"
+                  ? "我的事项"
+                  : item.label}
               </Link>
             ),
           )}

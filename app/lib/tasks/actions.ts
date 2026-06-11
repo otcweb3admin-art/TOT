@@ -17,6 +17,8 @@ import {
   checkCompleteWorkItem,
   checkCancelWorkItem,
   checkAssignWorkItem,
+  checkConfirmClientWorkItem,
+  checkRequestClientWorkItemChanges,
 } from "@/lib/tasks/access";
 
 // ===== WorkItem server actions (TASK-071) =====
@@ -306,7 +308,62 @@ export async function cancelWorkItem(
   redirect(`/dashboard/tasks/${wi.id}`);
 }
 
-/** 分配负责人：admin 任意任务；operator 仅外包执行任务（目标必须是 executor）。 */
+/**
+ * 客户确认通过 (TASK-074)：merchant 本人对分配给自己的 submitted 确认事项点「确认通过」
+ * → approved（客户已确认）。不自动 completed / 不自动发布 / 不自动创建后续任务 /
+ * 不写商家节点——后续由审核员人工推进。
+ */
+export async function confirmClientWorkItem(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  _formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState; void _formData;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "事项不存在或无权访问。" };
+  const c = checkConfirmClientWorkItem(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { status: "approved", approvedAt: new Date(), reviewNote: "【客户确认】客户已确认通过。" },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/**
+ * 客户提出修改意见 (TASK-074)：merchant 本人对 submitted 确认事项提交修改意见（必填）
+ * → changes_requested，意见写入 reviewNote。不自动退回外包 / 不自动重开 AI 草稿 /
+ * 不改业务节点——内部如何处理由审核员决定。
+ */
+export async function requestClientWorkItemChanges(
+  workItemId: string,
+  _prevState: WorkItemActionState,
+  formData: FormData,
+): Promise<WorkItemActionState> {
+  const user = await requireUser();
+  void _prevState;
+
+  const wi = await getActionableWorkItem(user, workItemId);
+  if (!wi) return { error: "事项不存在或无权访问。" };
+  const c = checkRequestClientWorkItemChanges(user, wi);
+  if (!c.allowed) return { error: c.reason };
+
+  const clientNote = opt(formData, "clientNote");
+  if (!clientNote) return { error: "修改意见不能为空——请写清楚需要调整的地方。" };
+
+  await prisma.workItem.update({
+    where: { id: wi.id },
+    data: { status: "changes_requested", reviewNote: `【客户修改意见】${clientNote}` },
+  });
+  revalidateTaskPaths(wi.id);
+  redirect(`/dashboard/tasks/${wi.id}`);
+}
+
+/** 分配负责人：admin 任意任务；operator 仅 外包执行（目标 executor）/ 客户确认（目标 merchant）。 */
 export async function assignWorkItem(
   workItemId: string,
   _prevState: WorkItemActionState,
@@ -328,8 +385,13 @@ export async function assignWorkItem(
   });
   if (!target || target.status !== "active") return { error: "目标账号不存在或未启用。" };
   if (target.role === "ai_worker") return { error: "ai_worker 不可作为任务负责人。" };
-  if (user.role === "operator" && target.role !== "executor") {
-    return { error: "operator 分配外包任务时，负责人必须是 executor。" };
+  if (user.role === "operator") {
+    if (wi.type === "outsource_execution" && target.role !== "executor") {
+      return { error: "operator 分配外包任务时，负责人必须是 executor。" };
+    }
+    if (wi.type === "client_confirmation" && target.role !== "merchant") {
+      return { error: "operator 分配客户确认事项时，负责人必须是 merchant（客户）。" };
+    }
   }
 
   await prisma.workItem.update({

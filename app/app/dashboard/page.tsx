@@ -62,9 +62,11 @@ function SystemStatusCard() {
   );
 }
 
-/** merchant → 客户工作台（V1：客户确认事项实时；其余仍为占位，不暴露内部入口） */
+/** merchant → 客户工作台（TASK-074：确认事项实时计数；其余仍为占位，不暴露内部入口） */
 function CustomerWorkspace({ stats }: { stats: WorkItemStats | null }) {
-  const confirmCount = stats?.reviewQueue.clientConfirmationOpen ?? 0;
+  const s = stats?.byStatus; // merchant 可见集 = 仅分配给自己的客户确认事项
+  const awaiting = s?.submitted ?? 0;
+  const noItems = (stats?.total ?? 0) === 0;
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
@@ -72,27 +74,41 @@ function CustomerWorkspace({ stats }: { stats: WorkItemStats | null }) {
           title="我的项目进度"
           items={[
             { label: "当前阶段", value: "项目立项后此处显示进度" },
-            { label: "已完成事项", value: "—" },
+            { label: "待补充资料", value: "暂无（项目启动后显示）" },
             { label: "下一步", value: "项目启动后由负责人同步" },
           ]}
-          note="当前版本客户门户为 V1 占位，客户绑定商家和上传资料将在后续版本实现。"
+          note="当前版本客户门户为 V1，客户绑定商家和上传资料将在后续版本实现。"
         />
-        <RoleQueuePreview
-          title="需要我配合的事项"
-          items={[
-            { label: "待补充资料", value: "暂无（项目启动后显示）" },
-            {
-              label: "待确认内容",
-              value:
-                confirmCount > 0 ? (
-                  <TasksLink label={`${confirmCount} 项待确认 — 查看我的事项`} />
-                ) : (
-                  "暂无（有待确认事项时显示在这里）"
-                ),
-            },
-          ]}
-          note="有待确认内容时，确认通过后我们才会进入下一步。"
-        />
+        {noItems ? (
+          <section className="rounded-lg border border-dashed border-zinc-300 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+            <h2 className="text-sm font-medium text-zinc-500">我的确认事项</h2>
+            <p className="mt-2">当前暂无需要你确认的事项。</p>
+            <p className="mt-1 text-xs">
+              当团队需要你确认内容、素材、方案或下一步安排时，会在这里出现。
+            </p>
+            <p className="mt-0.5 text-xs">确认通过后，团队才会进入下一步。</p>
+          </section>
+        ) : (
+          <RoleQueuePreview
+            title="我的确认事项（实时）"
+            items={[
+              {
+                label: "待确认",
+                value:
+                  awaiting > 0 ? (
+                    <TasksLink label={`${awaiting} 项 — 去确认`} />
+                  ) : (
+                    "0 项"
+                  ),
+              },
+              { label: "已确认", value: `${s?.approved ?? 0} 项` },
+              { label: "需要修改（已反馈）", value: `${s?.changes_requested ?? 0} 项` },
+              { label: "已完成", value: `${s?.completed ?? 0} 项` },
+              { label: "入口", value: <TasksLink label="查看我的确认事项" /> },
+            ]}
+            note="确认通过后团队才会进入下一步；确认通过不代表承诺增长结果。"
+          />
+        )}
       </div>
       <section className="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
         <h2 className="text-sm font-medium text-zinc-500">联系负责人</h2>
@@ -213,7 +229,16 @@ function ReviewerWorkspace({
             },
             { label: "其中 AI 草稿审核", value: `${q?.aiDraftSubmitted ?? 0} 个` },
             { label: "其中外包成果审核", value: `${q?.outsourceSubmitted ?? 0} 个` },
-            { label: "客户确认事项（未完成）", value: `${q?.clientConfirmationOpen ?? 0} 个` },
+            { label: "待客户确认", value: `${q?.clientConfirmationAwaiting ?? 0} 个` },
+            {
+              label: "客户已反馈待处理",
+              value:
+                (q?.clientConfirmationFeedback ?? 0) > 0 ? (
+                  <TasksLink label={`${q?.clientConfirmationFeedback} 个 — 查看客户反馈`} />
+                ) : (
+                  "0 个"
+                ),
+            },
           ]}
           note="审核 / 退回 / 完成均为人工操作；审核通过不等于自动进入下一阶段。"
         />

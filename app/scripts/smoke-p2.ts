@@ -41,6 +41,9 @@ import {
   checkRequestWorkItemChanges,
   checkCompleteWorkItem,
   checkCancelWorkItem,
+  checkAssignWorkItem,
+  checkConfirmClientWorkItem,
+  checkRequestClientWorkItemChanges,
 } from "@/lib/tasks/access";
 import {
   WORK_ITEM_TYPES,
@@ -514,6 +517,61 @@ async function run(): Promise<void> {
   check("merchant cannot see the outsource task; ai_worker cannot operate it",
     (await prisma.workItem.findFirst({ where: { AND: [{ id: tOut.id }, workItemVisibilityWhere({ profileId: other.id, role: "merchant" })!] } })) === null &&
     workItemVisibilityWhere({ profileId: other.id, role: "ai_worker" }) === null);
+
+  // 15) CLIENT CONFIRMATION PORTAL (TASK-074) ----------------------------------------------
+  console.log("\n[client confirmation]");
+  check("operator may create client_confirmation; assign rule covers client_confirmation->merchant",
+    canCreateWorkItemType("operator", "client_confirmation") &&
+    checkAssignWorkItem({ profileId: owner.id, role: "operator" }, { type: "client_confirmation", status: "not_started", assignedProfileId: null, createdByProfileId: owner.id, assignedRole: "merchant" }).allowed === true &&
+    checkAssignWorkItem({ profileId: owner.id, role: "operator" }, { type: "general_followup", status: "not_started", assignedProfileId: null, createdByProfileId: owner.id, assignedRole: null }).allowed === false);
+
+  // temp merchant profile (cleaned by email prefix) + a confirmation task assigned to it.
+  const mer1 = await prisma.userProfile.create({
+    data: { authUserId: randomUUID(), email: `${PREFIX}client1_${ts}@smoke.local`, role: "merchant", status: "active" },
+  });
+  const mer1User = { profileId: mer1.id, role: "merchant" as const };
+  const otherMerchant = { profileId: other.id, role: "merchant" as const };
+  const tConfirm = await prisma.workItem.create({
+    data: { title: `${PREFIX}TASK_CONFIRM_${ts}`, type: "client_confirmation", merchantId: full.id, status: "submitted", submittedAt: new Date(), assignedRole: "merchant", assignedProfileId: mer1.id, createdByProfileId: owner.id, requiresClientConfirmation: true, requirements: "请确认账号命名方向", acceptanceCriteria: "确认后进入账号搭建" },
+  });
+  check("client_confirmation created (assignedRole=merchant, submitted=待确认)", tConfirm.assignedRole === "merchant" && tConfirm.status === "submitted");
+
+  // operator awaiting count (replicates the home stat query).
+  const opVisCc = workItemVisibilityWhere({ profileId: owner.id, role: "operator" })!;
+  const awaiting = await prisma.workItem.count({ where: { AND: [opVisCc, { type: "client_confirmation", status: "submitted" }] } });
+  check("operator home stat counts 待客户确认", awaiting >= 1, `count=${awaiting}`);
+
+  // visibility: assigned merchant sees it; another merchant does NOT; internal tasks invisible.
+  check("assigned merchant sees own confirmation; other merchant does NOT (no leak)",
+    (await prisma.workItem.findFirst({ where: { AND: [{ id: tConfirm.id }, workItemVisibilityWhere(mer1User)!] } })) !== null &&
+    (await prisma.workItem.findFirst({ where: { AND: [{ id: tConfirm.id }, workItemVisibilityWhere(otherMerchant)!] } })) === null);
+  const mer1SeesInternal = await prisma.workItem.count({ where: { AND: [{ title: { startsWith: PREFIX }, type: { not: "client_confirmation" } }, workItemVisibilityWhere(mer1User)!] } });
+  check("merchant sees NO internal tasks (intake/ai-draft/outsource)", mer1SeesInternal === 0, `count=${mer1SeesInternal}`);
+
+  // client action rights: assigned merchant only, submitted only; others denied.
+  check("assigned merchant may confirm / request changes on submitted",
+    checkConfirmClientWorkItem(mer1User, tConfirm).allowed === true &&
+    checkRequestClientWorkItemChanges(mer1User, tConfirm).allowed === true);
+  check("client actions DENIED for operator/executor/ai_worker/other-merchant/wrong-status",
+    !checkConfirmClientWorkItem({ profileId: owner.id, role: "operator" }, tConfirm).allowed &&
+    !checkConfirmClientWorkItem({ profileId: exec1.id, role: "executor" }, tConfirm).allowed &&
+    !checkConfirmClientWorkItem({ profileId: other.id, role: "ai_worker" }, tConfirm).allowed &&
+    !checkConfirmClientWorkItem(otherMerchant, tConfirm).allowed &&
+    !checkConfirmClientWorkItem(mer1User, { ...tConfirm, status: "approved" }).allowed);
+
+  // request changes: note saved to reviewNote (action enforces non-empty; replicate payload).
+  const tCcReturned = await prisma.workItem.update({ where: { id: tConfirm.id }, data: { status: "changes_requested", reviewNote: "【客户修改意见】门头照片想换一张" } });
+  check("client changes: status=changes_requested + reviewNote carries 客户修改意见", tCcReturned.status === "changes_requested" && (tCcReturned.reviewNote ?? "").includes("客户修改意见") && (tCcReturned.reviewNote ?? "").includes("门头照片"));
+  const opReadsNote = await prisma.workItem.findFirst({ where: { AND: [{ id: tConfirm.id }, opVisCc] }, select: { reviewNote: true } });
+  check("operator can read the client feedback", (opReadsNote?.reviewNote ?? "").includes("门头照片"));
+
+  // confirm path: back to submitted then approved; no auto-complete, no auto follow-up task.
+  await prisma.workItem.update({ where: { id: tConfirm.id }, data: { status: "submitted" } });
+  const tasksBefore = await prisma.workItem.count({ where: { title: { startsWith: PREFIX } } });
+  const tCcApproved = await prisma.workItem.update({ where: { id: tConfirm.id }, data: { status: "approved", approvedAt: new Date(), reviewNote: "【客户确认】客户已确认通过。" } });
+  const tasksAfter = await prisma.workItem.count({ where: { title: { startsWith: PREFIX } } });
+  check("client confirm: approved + approvedAt; NOT auto-completed", tCcApproved.status === "approved" && tCcApproved.approvedAt !== null && tCcApproved.completedAt === null);
+  check("confirm did NOT auto-create follow-up tasks", tasksBefore === tasksAfter, `before=${tasksBefore} after=${tasksAfter}`);
 }
 
 async function main(): Promise<void> {
